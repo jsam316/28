@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: twenty-eight-server
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install && npm run build -w packages/engine && npm run build -w packages/server
+    startCommand: npm run start -w packages/server
+    healthCheckPath: /health
+    envVars:
+      # Comma-separated list of allowed client origins for CORS, e.g.
+      # https://www.28-game.com,https://jsam316.github.io
+      - key: CLIENT_ORIGIN
+        sync: false
