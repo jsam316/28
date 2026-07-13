@@ -1,0 +1,155 @@
+export type Suit = 'S' | 'H' | 'D' | 'C';
+export type Rank = '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | 'A';
+
+export interface Card {
+  suit: Suit;
+  rank: Rank;
+}
+
+export const SUITS: Suit[] = ['S', 'H', 'D', 'C'];
+export const RANKS: Rank[] = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+// Strength order within a suit for trick-taking, weakest to strongest.
+export const STRENGTH_ORDER: Rank[] = ['7', '8', 'Q', 'K', '10', 'A', '9', 'J'];
+
+export const CARD_POINTS: Record<Rank, number> = {
+  '7': 0,
+  '8': 0,
+  Q: 0,
+  K: 0,
+  '10': 1,
+  A: 1,
+  '9': 2,
+  J: 3,
+};
+
+export const TOTAL_POINTS = 28;
+
+export function cardId(card: Card): string {
+  return `${card.rank}${card.suit}`;
+}
+
+export function cardStrength(card: Card): number {
+  return STRENGTH_ORDER.indexOf(card.rank);
+}
+
+export function cardPoints(card: Card): number {
+  return CARD_POINTS[card.rank];
+}
+
+export type Seat = 0 | 1 | 2 | 3;
+export const SEATS: Seat[] = [0, 1, 2, 3];
+
+export function teamOf(seat: Seat): 0 | 1 {
+  return (seat % 2) as 0 | 1;
+}
+
+export function nextSeat(seat: Seat): Seat {
+  return ((seat + 1) % 4) as Seat;
+}
+
+export interface Player {
+  id: string;
+  name: string;
+  seat: Seat;
+  isBot: boolean;
+  connected: boolean;
+}
+
+export type Phase =
+  | 'lobby'
+  | 'bidding'
+  | 'trump_selection'
+  | 'playing'
+  | 'round_end'
+  | 'game_end';
+
+export interface BiddingState {
+  turnSeat: Seat;
+  minBid: number;
+  maxBid: number;
+  currentBid: number | null;
+  currentBidderSeat: Seat | null;
+  passed: [boolean, boolean, boolean, boolean];
+  history: { seat: Seat; action: 'pass' | number }[];
+}
+
+export interface TrumpState {
+  suit: Suit | null;
+  chosenBySeat: Seat | null;
+  revealed: boolean;
+}
+
+export interface PlayedCard {
+  seat: Seat;
+  card: Card;
+}
+
+export interface TrickState {
+  leadSeat: Seat | null;
+  cards: PlayedCard[];
+  trickNumber: number; // 1-8
+}
+
+export interface CompletedTrick {
+  trickNumber: number;
+  cards: PlayedCard[];
+  winnerSeat: Seat;
+  points: number;
+}
+
+export interface RoundResult {
+  roundNumber: number;
+  biddingTeam: 0 | 1;
+  bid: number;
+  pointsCaptured: [number, number];
+  made: boolean;
+  kappu: boolean; // bidding team won all 8 tricks
+  scoreDelta: [number, number];
+}
+
+export interface GameState {
+  players: Player[];
+  dealerSeat: Seat;
+  phase: Phase;
+  hands: [Card[], Card[], Card[], Card[]];
+  stock: [Card[], Card[], Card[], Card[]];
+  firstBatchSize: number;
+  secondBatchDealt: boolean;
+  bidding: BiddingState;
+  trump: TrumpState;
+  trick: TrickState;
+  completedTricks: CompletedTrick[];
+  scores: [number, number];
+  targetScore: number;
+  roundNumber: number;
+  history: RoundResult[];
+  log: string[];
+  winner: 0 | 1 | null;
+}
+
+export interface PlayerView {
+  you: Seat;
+  players: Player[];
+  dealerSeat: Seat;
+  phase: Phase;
+  hand: Card[];
+  handCounts: [number, number, number, number];
+  bidding: BiddingState;
+  trump: {
+    suit: Suit | null; // null if concealed and you are not the chooser
+    concealedForYou: boolean;
+    chosenBySeat: Seat | null;
+    revealed: boolean;
+  };
+  trick: TrickState;
+  completedTricks: CompletedTrick[];
+  scores: [number, number];
+  targetScore: number;
+  roundNumber: number;
+  history: RoundResult[];
+  log: string[];
+  winner: 0 | 1 | null;
+  canRequestTrumpReveal: boolean;
+  legalCards: Card[];
+}
