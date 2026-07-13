@@ -19,7 +19,10 @@ import {
 } from './gameManager.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
-const ORIGIN = process.env.CLIENT_ORIGIN ?? '*';
+// Comma-separated list, e.g. "https://www.28-game.com,https://jsam316.github.io"
+const ORIGIN: string | string[] = process.env.CLIENT_ORIGIN
+  ? process.env.CLIENT_ORIGIN.split(',').map((s) => s.trim())
+  : '*';
 
 const app = express();
 app.use(cors({ origin: ORIGIN }));
