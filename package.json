@@ -8,8 +8,8 @@
     "packages/web"
   ],
   "scripts": {
-    "dev:web": "npm run dev -w packages/web",
-    "dev:server": "npm run dev -w packages/server",
+    "dev:web": "npm run build -w packages/engine && npm run dev -w packages/web",
+    "dev:server": "npm run build -w packages/engine && npm run dev -w packages/server",
     "build": "npm run build -w packages/engine && npm run build -w packages/server && npm run build -w packages/web",
     "test:engine": "npm run test -w packages/engine"
   }
