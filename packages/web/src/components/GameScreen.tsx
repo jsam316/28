@@ -2,6 +2,7 @@ import { getCurrentActorSeat, type Card, type PlayerView, type Suit } from '@twe
 import { PlayerSeat, seatPosition } from './PlayerSeat';
 import { TrickArea } from './TrickArea';
 import { Hand } from './Hand';
+import { PlayingCard } from './Card';
 import { BiddingPanel } from './BiddingPanel';
 import { TrumpPanel } from './TrumpPanel';
 import { Scoreboard } from './Scoreboard';
@@ -30,6 +31,14 @@ export function GameScreen({ view, actions, waitingForHostMessage }: GameScreenP
   const currentTurnSeat = getCurrentActorSeat(view);
 
   const lastResult = view.history[view.history.length - 1];
+
+  const handPreview = (
+    <div className="hand">
+      {view.hand.map((c) => (
+        <PlayingCard key={`${c.rank}${c.suit}`} card={c} size="lg" />
+      ))}
+    </div>
+  );
 
   return (
     <div className="game-screen">
@@ -63,16 +72,22 @@ export function GameScreen({ view, actions, waitingForHostMessage }: GameScreenP
 
       <div className="bottom-panel">
         {view.phase === 'bidding' && (
-          <BiddingPanel bidding={view.bidding} you={you} players={players} onBid={actions.bid} />
+          <>
+            <BiddingPanel bidding={view.bidding} you={you} players={players} onBid={actions.bid} />
+            {handPreview}
+          </>
         )}
 
         {view.phase === 'trump_selection' && view.bidding.currentBidderSeat === you && (
           <TrumpPanel hand={view.hand} bidAmount={view.bidding.currentBid ?? 0} onChoose={actions.pickTrump} />
         )}
         {view.phase === 'trump_selection' && view.bidding.currentBidderSeat !== you && (
-          <div className="waiting-banner">
-            Waiting for {players.find((p) => p.seat === view.bidding.currentBidderSeat)?.name} to pick trump...
-          </div>
+          <>
+            <div className="waiting-banner">
+              Waiting for {players.find((p) => p.seat === view.bidding.currentBidderSeat)?.name} to pick trump...
+            </div>
+            {handPreview}
+          </>
         )}
 
         {view.phase === 'playing' && (
