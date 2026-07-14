@@ -252,7 +252,7 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
   // Trick complete.
   const completed = resolveTrick(trick.cards, state.trump.suit, trick.trickNumber);
   const completedTricks = [...state.completedTricks, completed];
-  log.push(`${playerName(state.players, completed.winnerSeat)} wins the trick (${completed.points} pts).`);
+  log.push(`${playerName(state.players, completed.winnerSeat)} wins the kai (${completed.points} pts).`);
 
   if (completedTricks.length === 8) {
     return finishRound({ ...state, hands, completedTricks, log: cloneLog(state, ...log) });
@@ -302,7 +302,7 @@ function finishRound(state: GameState): GameState {
   const log = [
     ...state.log,
     made
-      ? `Bidding team captured ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid made${kappu ? ' with a KAPPU (all 8 tricks)!' : '.'}`
+      ? `Bidding team captured ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid made${kappu ? ' with a KAPPU (all 8 kai)!' : '.'}`
       : `Bidding team captured only ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid failed.`,
     `Score: Team A ${scores[0]} - Team B ${scores[1]}`,
   ];

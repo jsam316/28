@@ -24,7 +24,7 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
         <p className={result.made ? 'result-made' : 'result-failed'}>
           {result.made
             ? result.kappu
-              ? 'KAPPU! They swept all 8 tricks — double points!'
+              ? 'KAPPU! They swept all 8 kai — double points!'
               : 'Bid made!'
             : 'Bid failed — the bid was set.'}
         </p>
