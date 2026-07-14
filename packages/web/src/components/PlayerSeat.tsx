@@ -22,6 +22,13 @@ export function PlayerSeat({ player, isTurn, isDealer, isBidder, cardCount, posi
         {!player.connected && <span className="seat-disconnected"> (offline)</span>}
       </div>
       <div className="seat-cardcount">{cardCount} cards</div>
+      {isTurn && player.isBot && (
+        <div className="thinking-indicator" aria-label={`${player.name} is thinking`}>
+          <span />
+          <span />
+          <span />
+        </div>
+      )}
     </div>
   );
 }
