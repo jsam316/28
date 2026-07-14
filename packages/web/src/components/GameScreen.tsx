@@ -6,7 +6,7 @@ import { PlayingCard } from './Card';
 import { BiddingPanel } from './BiddingPanel';
 import { TrumpPanel } from './TrumpPanel';
 import { Scoreboard } from './Scoreboard';
-import { LogPanel } from './LogPanel';
+import { Ticker } from './Ticker';
 import { RoundEndOverlay } from './RoundEndOverlay';
 import { GameEndOverlay } from './GameEndOverlay';
 
@@ -50,6 +50,8 @@ export function GameScreen({ view, actions, waitingForHostMessage }: GameScreenP
         trumpConcealed={view.trump.concealedForYou}
       />
 
+      <Ticker log={view.log} />
+
       <div className="table">
         {players.map((p) => (
           <PlayerSeat
@@ -64,11 +66,14 @@ export function GameScreen({ view, actions, waitingForHostMessage }: GameScreenP
         ))}
 
         {view.phase === 'playing' && (
-          <TrickArea cards={view.trick.cards} you={you} trickNumber={view.trick.trickNumber} />
+          <TrickArea
+            cards={view.trick.cards}
+            you={you}
+            trickNumber={view.trick.trickNumber}
+            completedTricks={view.completedTricks}
+          />
         )}
       </div>
-
-      <LogPanel log={view.log} />
 
       <div className="bottom-panel">
         {view.phase === 'bidding' && (

@@ -263,6 +263,60 @@ button {
   box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.6);
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .seat-active {
+    animation: seat-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes seat-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 10px 3px rgba(212, 175, 55, 0.85);
+  }
+}
+
+.thinking-indicator {
+  display: flex;
+  gap: 3px;
+  height: 6px;
+  margin-top: 0.15rem;
+}
+
+.thinking-indicator span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .thinking-indicator span {
+    animation: thinking-blink 1s infinite ease-in-out;
+  }
+  .thinking-indicator span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .thinking-indicator span:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+
+@keyframes thinking-blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
 .seat-bottom {
   grid-column: 2;
   grid-row: 3;
@@ -349,6 +403,22 @@ button {
 
 .trick-card {
   position: absolute;
+  transition: transform 0.6s ease-in, opacity 0.6s ease-in;
+}
+
+.trick-card-anim {
+  animation: card-played 0.3s ease-out;
+}
+
+@keyframes card-played {
+  from {
+    opacity: 0;
+    transform: scale(0.5) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .trick-card-bottom {
@@ -367,16 +437,79 @@ button {
   transform: translateX(2.2rem);
 }
 
-.log-panel {
-  margin: 0 1rem;
-  font-size: 0.78rem;
-  color: #c7d4cd;
-  min-height: 1.1rem;
+/* Sweep the collected trick toward whichever seat won it. These come after
+   the base position rules above so they win the transform tie-break. */
+.trick-card-sweep-bottom {
+  transform: translateY(9rem) scale(0.5);
+  opacity: 0;
 }
 
-.log-line-latest {
-  color: #f4f1ea;
-  font-weight: 600;
+.trick-card-sweep-top {
+  transform: translateY(-9rem) scale(0.5);
+  opacity: 0;
+}
+
+.trick-card-sweep-left {
+  transform: translateX(-9rem) scale(0.5);
+  opacity: 0;
+}
+
+.trick-card-sweep-right {
+  transform: translateX(9rem) scale(0.5);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trick-card {
+    transition: none;
+  }
+  .trick-card-anim {
+    animation: none;
+  }
+}
+
+.ticker {
+  overflow: hidden;
+  white-space: nowrap;
+  background: rgba(8, 30, 20, 0.92);
+  border-top: 1px solid rgba(212, 175, 55, 0.3);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding: 0.45rem 0;
+  margin: 0 0.75rem;
+}
+
+.ticker-track {
+  display: inline-flex;
+  animation: ticker-scroll 26s linear infinite;
+}
+
+.ticker:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+.ticker-content {
+  padding-right: 3rem;
+  font-size: 0.82rem;
+  color: #dce8e2;
+  white-space: nowrap;
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+  .ticker-content:nth-child(2) {
+    display: none;
+  }
 }
 
 .bottom-panel {
@@ -472,7 +605,7 @@ button {
   justify-content: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
   margin: 0 -0.35rem;
-  transition: transform 0.12s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .card.size-sm {
@@ -506,7 +639,15 @@ button {
 }
 
 .card.clickable:not(.disabled):hover {
-  transform: translateY(-8px);
+  transform: translateY(-10px) scale(1.05);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.5);
+  z-index: 5;
+}
+
+.card.clickable:not(.disabled):active {
+  transform: translateY(-4px) scale(0.97);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
   z-index: 5;
 }
 
