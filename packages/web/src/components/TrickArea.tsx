@@ -6,13 +6,12 @@ import { seatPosition } from './PlayerSeat';
 interface TrickAreaProps {
   cards: PlayedCard[];
   you: Seat;
-  trickNumber: number;
   completedTricks: CompletedTrick[];
 }
 
 const SWEEP_MS = 650;
 
-export function TrickArea({ cards, you, trickNumber, completedTricks }: TrickAreaProps) {
+export function TrickArea({ cards, you, completedTricks }: TrickAreaProps) {
   const [sweep, setSweep] = useState<CompletedTrick | null>(null);
   const seenCount = useRef(completedTricks.length);
 
@@ -33,7 +32,6 @@ export function TrickArea({ cards, you, trickNumber, completedTricks }: TrickAre
 
   return (
     <div className="trick-area">
-      <div className="trick-number">Trick {trickNumber}/8</div>
       {shown.map((pc) => {
         const pos = seatPosition(pc.seat, you);
         return (

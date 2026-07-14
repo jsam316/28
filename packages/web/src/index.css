@@ -1,13 +1,19 @@
 :root {
-  --felt: #0b6b43;
-  --felt-dark: #084d31;
+  --felt: #0e7a4d;
+  --felt-dark: #052818;
   --gold: #d4af37;
-  --card-bg: #fffdf7;
-  --card-border: #2b2b2b;
-  --ink: #1a1a1a;
+  --gold-light: #f2d886;
+  --gold-dark: #a3801f;
+  --card-bg: #fffdf6;
+  --card-border: #241f16;
+  --card-red: #9c2b3a;
+  --ink: #191712;
   --muted: #6b6375;
-  --panel-bg: rgba(8, 30, 20, 0.92);
+  --panel-bg: rgba(7, 26, 18, 0.88);
+  --panel-border: rgba(212, 175, 55, 0.32);
   --accent: #d4af37;
+  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', serif;
+  --font-body: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color-scheme: light dark;
 }
 
@@ -23,13 +29,20 @@ body,
 }
 
 body {
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background: radial-gradient(circle at top, #123b2c, #06170f 75%);
+  font-family: var(--font-body);
+  background: radial-gradient(ellipse at top, #14442f, #050f0a 78%);
   color: #f4f1ea;
 }
 
 button {
   font-family: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  text-wrap: balance;
 }
 
 /* ---------- Home / Lobby ---------- */
@@ -44,33 +57,43 @@ button {
 }
 
 .home h1 {
-  font-size: 3rem;
+  font-size: 3.4rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   margin: 0;
   text-align: center;
-  color: var(--gold);
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(180deg, var(--gold-light), var(--gold) 55%, var(--gold-dark));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
 .subtitle {
   text-align: center;
   color: #cfd8d3;
-  margin-top: -0.5rem;
+  margin-top: -0.75rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
 }
 
 .home-section {
   background: var(--panel-bg);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 1.1rem 1.3rem;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .home-section h2 {
   margin: 0 0 0.25rem;
-  font-size: 1.1rem;
-  color: var(--gold);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--gold-light);
 }
 
 .field {
@@ -113,38 +136,44 @@ button {
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.08s ease, filter 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 3px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:hover {
+  filter: brightness(1.08);
 }
 
 .btn:active {
   transform: scale(0.97);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, #f0cf6a, var(--gold));
+  background: linear-gradient(180deg, var(--gold-light), var(--gold) 60%, var(--gold-dark));
   color: #2b2000;
 }
 
 .btn-secondary {
-  background: #234a3a;
+  background: linear-gradient(180deg, #2a5745, #1c3c2f);
   color: #f4f1ea;
   border: 1px solid rgba(212, 175, 55, 0.5);
 }
 
 .btn-pass {
-  background: #5a2a2a;
+  background: linear-gradient(180deg, #7a3838, #4a1f1f);
   color: #fff;
 }
 
 .btn-bid {
-  background: #234a3a;
+  background: linear-gradient(180deg, #2a5745, #1c3c2f);
   color: #fff;
   border: 1px solid rgba(212, 175, 55, 0.5);
 }
 
 .btn-call-trump {
   align-self: center;
-  background: var(--gold);
+  background: linear-gradient(180deg, var(--gold-light), var(--gold) 60%, var(--gold-dark));
   color: #2b2000;
   margin-bottom: 0.5rem;
 }
@@ -153,7 +182,7 @@ button {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  background: #0f2a20;
+  background: linear-gradient(180deg, #163d2d, #0d271c);
   color: #f4f1ea;
   border: 1px solid rgba(212, 175, 55, 0.4);
 }
@@ -200,15 +229,24 @@ button {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 1rem;
+  padding: 0.65rem 1.1rem;
   background: var(--panel-bg);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--panel-border);
   font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
   flex-wrap: wrap;
+}
+
+.score-round {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: #cfd8d3;
 }
 
 .score-team {
   font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .score-a {
@@ -238,9 +276,17 @@ button {
   min-height: 320px;
   margin: 0.75rem;
   border-radius: 24px;
-  background: radial-gradient(circle at center, var(--felt), var(--felt-dark));
+  background: repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.015) 0,
+      rgba(255, 255, 255, 0.015) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.02) 0, rgba(0, 0, 0, 0.02) 1px, transparent 1px, transparent 7px),
+    radial-gradient(ellipse at center, var(--felt), var(--felt-dark) 85%);
   border: 10px solid #3a2416;
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 0 2px 2px rgba(212, 175, 55, 0.18), inset 0 0 50px rgba(0, 0, 0, 0.5);
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
@@ -345,13 +391,15 @@ button {
   width: 2.2rem;
   height: 2.2rem;
   border-radius: 50%;
-  background: #123b2c;
+  background: radial-gradient(circle at 35% 30%, #1c4a37, #0c2419);
   border: 2px solid var(--gold);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--font-display);
   font-weight: 700;
-  color: var(--gold);
+  color: var(--gold-light);
 }
 
 .seat-badges {
@@ -389,16 +437,6 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.trick-number {
-  position: absolute;
-  top: -1.6rem;
-  font-size: 0.75rem;
-  color: #dce8e2;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
 }
 
 .trick-card {
@@ -469,46 +507,55 @@ button {
 }
 
 .ticker {
+  --ticker-line-height: 1.9rem;
+  height: var(--ticker-line-height);
   overflow: hidden;
-  white-space: nowrap;
+  position: relative;
   background: rgba(8, 30, 20, 0.92);
-  border-top: 1px solid rgba(212, 175, 55, 0.3);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
-  padding: 0.45rem 0;
+  border-top: 1px solid var(--panel-border);
+  border-bottom: 1px solid var(--panel-border);
   margin: 0 0.75rem;
+  mask-image: linear-gradient(to bottom, transparent, black 25%, black 75%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 25%, black 75%, transparent);
 }
 
 .ticker-track {
-  display: inline-flex;
-  animation: ticker-scroll 26s linear infinite;
+  display: flex;
+  flex-direction: column;
+  animation: ticker-scroll-vertical 34s linear infinite;
 }
 
 .ticker:hover .ticker-track {
   animation-play-state: paused;
 }
 
-.ticker-content {
-  padding-right: 3rem;
+.ticker-line {
+  height: var(--ticker-line-height);
+  line-height: var(--ticker-line-height);
+  padding: 0 1rem;
   font-size: 0.82rem;
   color: #dce8e2;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-@keyframes ticker-scroll {
+.ticker-static .ticker-line {
+  color: #f4f1ea;
+}
+
+@keyframes ticker-scroll-vertical {
   from {
-    transform: translateX(0);
+    transform: translateY(0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translateY(-50%);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ticker-track {
     animation: none;
-  }
-  .ticker-content:nth-child(2) {
-    display: none;
   }
 }
 
@@ -529,7 +576,8 @@ button {
   width: 100%;
   max-width: 640px;
   background: var(--panel-bg);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--panel-border);
   border-radius: 14px;
   padding: 0.75rem 1rem;
   display: flex;
@@ -537,6 +585,7 @@ button {
   gap: 0.6rem;
   align-items: center;
   text-align: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .bidding-turn {
@@ -556,16 +605,19 @@ button {
   width: 100%;
   max-width: 640px;
   background: var(--panel-bg);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--panel-border);
   border-radius: 14px;
   padding: 0.9rem 1rem;
   text-align: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .trump-panel h3 {
   margin-top: 0;
-  font-size: 1rem;
-  color: var(--gold);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gold-light);
 }
 
 .trump-panel-hand {
@@ -595,7 +647,7 @@ button {
 
 .card {
   position: relative;
-  background: var(--card-bg);
+  background: linear-gradient(165deg, #fffef9, var(--card-bg) 40%);
   border: 1.5px solid var(--card-border);
   border-radius: 8px;
   font-weight: 700;
@@ -606,6 +658,15 @@ button {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
   margin: 0 -0.35rem;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(36, 31, 22, 0.3);
+  border-radius: 5px;
+  pointer-events: none;
 }
 
 .card.size-sm {
@@ -627,11 +688,11 @@ button {
 }
 
 .card.red {
-  color: #c0392b;
+  color: var(--card-red);
 }
 
 .card.black {
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 .card.clickable:not(.disabled) {
@@ -662,7 +723,8 @@ button {
 }
 
 .card-back {
-  background: repeating-linear-gradient(45deg, #123b2c, #123b2c 4px, #0b2a1f 4px, #0b2a1f 8px);
+  background: repeating-linear-gradient(45deg, #123b2c, #123b2c 4px, #0b2a1f 4px, #0b2a1f 8px),
+    repeating-linear-gradient(-45deg, rgba(212, 175, 55, 0.06) 0, rgba(212, 175, 55, 0.06) 1px, transparent 1px, transparent 8px);
   border: 1.5px solid #04140d;
   border-radius: 8px;
 }
@@ -708,18 +770,20 @@ button {
 }
 
 .overlay-card {
-  background: #0f2a20;
+  background: linear-gradient(180deg, #12332580, #0a1f16), #0f2a20;
   border: 1px solid var(--gold);
   border-radius: 16px;
-  padding: 1.5rem;
+  padding: 1.75rem 1.5rem;
   max-width: 420px;
   width: 100%;
   text-align: center;
   color: #f4f1ea;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
 .overlay-card h2 {
-  color: var(--gold);
+  font-size: 1.5rem;
+  color: var(--gold-light);
   margin-top: 0;
 }
 

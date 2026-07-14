@@ -66,12 +66,7 @@ export function GameScreen({ view, actions, waitingForHostMessage }: GameScreenP
         ))}
 
         {view.phase === 'playing' && (
-          <TrickArea
-            cards={view.trick.cards}
-            you={you}
-            trickNumber={view.trick.trickNumber}
-            completedTricks={view.completedTricks}
-          />
+          <TrickArea cards={view.trick.cards} you={you} completedTricks={view.completedTricks} />
         )}
       </div>
 
