@@ -85,15 +85,12 @@ export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
   }
 
   return (
-    <div>
-      <button type="button" className="btn-link exit-link" onClick={onExit}>
-        &larr; Leave room
-      </button>
-      <GameScreen
-        view={view}
-        actions={{ bid, pickTrump, callTrump, play, nextRound }}
-        waitingForHostMessage="Waiting for a player to start the next round..."
-      />
-    </div>
+    <GameScreen
+      view={view}
+      actions={{ bid, pickTrump, callTrump, play, nextRound }}
+      waitingForHostMessage="Waiting for a player to start the next round..."
+      onExit={onExit}
+      exitLabel="Leave room"
+    />
   );
 }

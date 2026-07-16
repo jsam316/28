@@ -24,14 +24,7 @@ function LocalGame({
   onExit: () => void;
 }) {
   const { view, bid, pickTrump, callTrump, play, nextRound, restart } = useLocalGame(name, targetScore, difficulty);
-  return (
-    <div>
-      <button type="button" className="btn-link exit-link" onClick={onExit}>
-        &larr; Home
-      </button>
-      <GameScreen view={view} actions={{ bid, pickTrump, callTrump, play, nextRound, restart }} />
-    </div>
-  );
+  return <GameScreen view={view} actions={{ bid, pickTrump, callTrump, play, nextRound, restart }} onExit={onExit} />;
 }
 
 export default function App() {
