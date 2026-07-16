@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { BotDifficulty } from '@twenty-eight/engine';
 import { Home } from './components/Home';
 import { GameScreen } from './components/GameScreen';
 import { OnlineLobby } from './components/OnlineLobby';
@@ -7,12 +8,22 @@ import { useLocalGame } from './hooks/useLocalGame';
 
 type Screen =
   | { kind: 'home' }
-  | { kind: 'local'; name: string; targetScore: number }
+  | { kind: 'local'; name: string; targetScore: number; difficulty: BotDifficulty }
   | { kind: 'online-lobby'; name: string }
   | { kind: 'online-game'; name: string; roomCode: string };
 
-function LocalGame({ name, targetScore, onExit }: { name: string; targetScore: number; onExit: () => void }) {
-  const { view, bid, pickTrump, callTrump, play, nextRound, restart } = useLocalGame(name, targetScore);
+function LocalGame({
+  name,
+  targetScore,
+  difficulty,
+  onExit,
+}: {
+  name: string;
+  targetScore: number;
+  difficulty: BotDifficulty;
+  onExit: () => void;
+}) {
+  const { view, bid, pickTrump, callTrump, play, nextRound, restart } = useLocalGame(name, targetScore, difficulty);
   return (
     <div>
       <button type="button" className="btn-link exit-link" onClick={onExit}>
@@ -29,14 +40,21 @@ export default function App() {
   if (screen.kind === 'home') {
     return (
       <Home
-        onPlaySolo={(name, targetScore) => setScreen({ kind: 'local', name, targetScore })}
+        onPlaySolo={(name, targetScore, difficulty) => setScreen({ kind: 'local', name, targetScore, difficulty })}
         onGoOnline={(name) => setScreen({ kind: 'online-lobby', name })}
       />
     );
   }
 
   if (screen.kind === 'local') {
-    return <LocalGame name={screen.name} targetScore={screen.targetScore} onExit={() => setScreen({ kind: 'home' })} />;
+    return (
+      <LocalGame
+        name={screen.name}
+        targetScore={screen.targetScore}
+        difficulty={screen.difficulty}
+        onExit={() => setScreen({ kind: 'home' })}
+      />
+    );
   }
 
   if (screen.kind === 'online-lobby') {

@@ -14,6 +14,20 @@ export type BotAction =
   | { type: 'reveal' }
   | { type: 'play'; card: Card };
 
+export type BotDifficulty = 'rookie' | 'regular' | 'expert';
+
+interface DifficultyProfile {
+  bidBase: number;
+  jitterScale: number; // multiplier on the base +/-1.5 hand-jitter range
+  mistakeChance: number; // odds of ignoring the "smart" choice entirely
+}
+
+const DIFFICULTY_PROFILES: Record<BotDifficulty, DifficultyProfile> = {
+  rookie: { bidBase: 8, jitterScale: 2.6, mistakeChance: 0.22 },
+  regular: { bidBase: 8, jitterScale: 1, mistakeChance: 0 },
+  expert: { bidBase: 9, jitterScale: 0.35, mistakeChance: 0 },
+};
+
 function suitStrengthScore(cards: Card[], suit: Suit): number {
   const inSuit = cards.filter((c) => c.suit === suit);
   const points = inSuit.reduce((sum, c) => sum + cardPoints(c), 0);
@@ -44,10 +58,11 @@ function stableJitter(cards: Card[]): number {
   return ((Math.abs(hash) % 300) / 100) - 1.5; // range [-1.5, 1.5)
 }
 
-function decideBid(view: PlayerView): BotAction {
+function decideBid(view: PlayerView, difficulty: BotDifficulty): BotAction {
+  const profile = DIFFICULTY_PROFILES[difficulty];
   const { score } = bestSuit(view.hand);
-  const jitter = stableJitter(view.hand);
-  const maxWillingBid = Math.round(8 + score * 0.65 + jitter);
+  const jitter = stableJitter(view.hand) * profile.jitterScale;
+  const maxWillingBid = Math.round(profile.bidBase + score * 0.65 + jitter);
   const { currentBid, minBid, maxBid } = view.bidding;
   const nextBid = currentBid === null ? minBid : currentBid + 1;
   if (nextBid > maxBid || maxWillingBid < nextBid) {
@@ -56,7 +71,13 @@ function decideBid(view: PlayerView): BotAction {
   return { type: 'bid', value: nextBid };
 }
 
-function decideTrump(view: PlayerView): BotAction {
+function decideTrump(view: PlayerView, difficulty: BotDifficulty): BotAction {
+  const profile = DIFFICULTY_PROFILES[difficulty];
+  if (profile.mistakeChance > 0 && Math.random() < profile.mistakeChance) {
+    const suits: Suit[] = ['S', 'H', 'D', 'C'];
+    const candidates = suits.filter((s) => view.hand.some((c) => c.suit === s));
+    return { type: 'trump', suit: candidates[Math.floor(Math.random() * candidates.length)] };
+  }
   const { suit } = bestSuit(view.hand);
   return { type: 'trump', suit };
 }
@@ -75,9 +96,9 @@ function currentBestPlay(
   return winner;
 }
 
-function decidePlay(view: PlayerView): BotAction {
+function smartPlay(view: PlayerView): Card {
   const legal = view.legalCards;
-  if (legal.length === 1) return { type: 'play', card: legal[0] };
+  if (legal.length === 1) return legal[0];
 
   const trumpSuit = view.trump.suit;
   const trickCards = view.trick.cards;
@@ -98,7 +119,7 @@ function decidePlay(view: PlayerView): BotAction {
     const hasHighCard = candidates.some((c) => c.rank === 'J' || c.rank === '9' || c.rank === 'A');
     candidates.sort((a, b) => cardStrength(b) - cardStrength(a));
     const lowestFirst = [...candidates].sort((a, b) => cardStrength(a) - cardStrength(b));
-    return { type: 'play', card: hasHighCard ? candidates[0] : lowestFirst[0] };
+    return hasHighCard ? candidates[0] : lowestFirst[0];
   }
 
   const ledSuit = trickCards[0].card.suit;
@@ -112,21 +133,18 @@ function decidePlay(view: PlayerView): BotAction {
   if (canFollowSuit) {
     const followers = legal.filter((c) => c.suit === ledSuit);
     if (partnerOrSelfWinning) {
-      const lowest = [...followers].sort((a, b) => cardStrength(a) - cardStrength(b))[0];
-      return { type: 'play', card: lowest };
+      return [...followers].sort((a, b) => cardStrength(a) - cardStrength(b))[0];
     }
     const winners = followers
       .filter((c) => cardStrength(c) > cardStrength(best.card))
       .sort((a, b) => cardStrength(a) - cardStrength(b));
-    if (winners.length > 0) return { type: 'play', card: winners[0] };
-    const lowest = [...followers].sort((a, b) => cardStrength(a) - cardStrength(b))[0];
-    return { type: 'play', card: lowest };
+    if (winners.length > 0) return winners[0];
+    return [...followers].sort((a, b) => cardStrength(a) - cardStrength(b))[0];
   }
 
   // Void in led suit.
   if (partnerOrSelfWinning) {
-    const lowest = [...legal].sort((a, b) => cardPoints(a) - cardPoints(b) || cardStrength(a) - cardStrength(b))[0];
-    return { type: 'play', card: lowest };
+    return [...legal].sort((a, b) => cardPoints(a) - cardPoints(b) || cardStrength(a) - cardStrength(b))[0];
   }
 
   if (trumpSuit) {
@@ -136,22 +154,30 @@ function decidePlay(view: PlayerView): BotAction {
       const winningTrumps = trumps
         .filter((c) => cardStrength(c) > currentTrumpStrength)
         .sort((a, b) => cardStrength(a) - cardStrength(b));
-      if (winningTrumps.length > 0) return { type: 'play', card: winningTrumps[0] };
+      if (winningTrumps.length > 0) return winningTrumps[0];
     }
   }
 
-  const lowest = [...legal].sort((a, b) => cardPoints(a) - cardPoints(b) || cardStrength(a) - cardStrength(b))[0];
-  return { type: 'play', card: lowest };
+  return [...legal].sort((a, b) => cardPoints(a) - cardPoints(b) || cardStrength(a) - cardStrength(b))[0];
 }
 
-export function decideBotAction(view: PlayerView): BotAction {
-  if (view.phase === 'bidding') return decideBid(view);
-  if (view.phase === 'trump_selection') return decideTrump(view);
+function decidePlay(view: PlayerView, difficulty: BotDifficulty): BotAction {
+  const legal = view.legalCards;
+  const profile = DIFFICULTY_PROFILES[difficulty];
+  if (legal.length > 1 && profile.mistakeChance > 0 && Math.random() < profile.mistakeChance) {
+    return { type: 'play', card: legal[Math.floor(Math.random() * legal.length)] };
+  }
+  return { type: 'play', card: smartPlay(view) };
+}
+
+export function decideBotAction(view: PlayerView, difficulty: BotDifficulty = 'regular'): BotAction {
+  if (view.phase === 'bidding') return decideBid(view, difficulty);
+  if (view.phase === 'trump_selection') return decideTrump(view, difficulty);
   if (view.phase === 'playing') {
     if (view.trump.suit === null && view.canRequestTrumpReveal) {
       return { type: 'reveal' };
     }
-    return decidePlay(view);
+    return decidePlay(view, difficulty);
   }
   throw new Error(`No bot action for phase ${view.phase}`);
 }

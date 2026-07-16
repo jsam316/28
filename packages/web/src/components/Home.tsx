@@ -1,13 +1,15 @@
 import { useState } from 'react';
+import type { BotDifficulty } from '@twenty-eight/engine';
 
 interface HomeProps {
-  onPlaySolo: (name: string, targetScore: number) => void;
+  onPlaySolo: (name: string, targetScore: number, difficulty: BotDifficulty) => void;
   onGoOnline: (name: string) => void;
 }
 
 export function Home({ onPlaySolo, onGoOnline }: HomeProps) {
   const [name, setName] = useState('');
   const [targetScore, setTargetScore] = useState(6);
+  const [difficulty, setDifficulty] = useState<BotDifficulty>('regular');
 
   return (
     <div className="home">
@@ -35,7 +37,19 @@ export function Home({ onPlaySolo, onGoOnline }: HomeProps) {
             <option value={21}>21 points</option>
           </select>
         </label>
-        <button type="button" className="btn btn-primary" onClick={() => onPlaySolo(name || 'You', targetScore)}>
+        <label className="field">
+          Bot difficulty
+          <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as BotDifficulty)}>
+            <option value="rookie">Rookie — erratic bidding, occasional mistakes</option>
+            <option value="regular">Regular — solid, sensible play</option>
+            <option value="expert">Expert — sharp bidding, few openings</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => onPlaySolo(name || 'You', targetScore, difficulty)}
+        >
           Play vs Bots
         </button>
       </div>

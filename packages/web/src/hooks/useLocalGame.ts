@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  type BotDifficulty,
   type Card,
   type GameState,
   type Player,
@@ -31,7 +32,7 @@ function buildPlayers(humanName: string): Player[] {
   }));
 }
 
-export function useLocalGame(humanName: string, targetScore: number) {
+export function useLocalGame(humanName: string, targetScore: number, difficulty: BotDifficulty = 'regular') {
   const [state, setState] = useState<GameState>(() => createGame(buildPlayers(humanName), { targetScore }));
   const botTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -49,7 +50,7 @@ export function useLocalGame(humanName: string, targetScore: number) {
         if (seat === null || seat === HUMAN_SEAT) return prev;
         try {
           const view = getPlayerView(prev, seat);
-          const action = decideBotAction(view);
+          const action = decideBotAction(view, difficulty);
           if (action.type === 'bid') return placeBid(prev, seat, action.value);
           if (action.type === 'trump') return chooseTrump(prev, seat, action.suit);
           if (action.type === 'reveal') return requestTrumpReveal(prev, seat);
