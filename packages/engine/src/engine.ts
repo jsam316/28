@@ -5,6 +5,7 @@ import {
   type Card,
   type GameState,
   type Player,
+  type RoundResult,
   type Seat,
   type Suit,
   TOTAL_POINTS,
@@ -27,7 +28,8 @@ function dealRound(
   dealerSeat: Seat,
   scores: [number, number],
   roundNumber: number,
-  opts: Required<GameOptions>
+  opts: Required<GameOptions>,
+  history: RoundResult[]
 ): GameState {
   const deck = shuffle(buildDeck(), opts.rng);
   const hands: [Card[], Card[], Card[], Card[]] = [[], [], [], []];
@@ -80,7 +82,7 @@ function dealRound(
     scores,
     targetScore: opts.targetScore,
     roundNumber,
-    history: [],
+    history,
     log: [`Round ${roundNumber}: cards dealt. ${playerName(players, openingBidder)} opens the bidding.`],
     winner: null,
   };
@@ -97,7 +99,7 @@ export function createGame(players: Player[], options: GameOptions = {}): GameSt
     maxBid: options.maxBid ?? DEFAULTS.maxBid,
     rng: options.rng ?? Math.random,
   };
-  return dealRound(players, 0, [0, 0], 1, opts);
+  return dealRound(players, 0, [0, 0], 1, opts, []);
 }
 
 export function startNextRound(state: GameState, options: GameOptions = {}): GameState {
@@ -108,7 +110,7 @@ export function startNextRound(state: GameState, options: GameOptions = {}): Gam
     rng: options.rng ?? Math.random,
   };
   const dealerSeat = nextSeat(state.dealerSeat);
-  return dealRound(state.players, dealerSeat, state.scores, state.roundNumber + 1, opts);
+  return dealRound(state.players, dealerSeat, state.scores, state.roundNumber + 1, opts, state.history);
 }
 
 function cloneLog(state: GameState, ...lines: string[]): string[] {

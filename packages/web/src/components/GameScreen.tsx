@@ -57,6 +57,7 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
         roundNumber={view.roundNumber}
         trumpSuit={view.trump.suit}
         trumpConcealed={view.trump.concealedForYou}
+        history={view.history}
       />
 
       <Ticker log={view.log} />

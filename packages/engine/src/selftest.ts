@@ -64,7 +64,7 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
   return s;
 }
 
-function assertInvariants(s: GameState) {
+function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
   const totalPoints = s.completedTricks.reduce((sum, t) => sum + t.points, 0);
   if (totalPoints !== TOTAL_POINTS) {
     throw new Error(`Expected total points ${TOTAL_POINTS}, got ${totalPoints}`);
@@ -83,6 +83,18 @@ function assertInvariants(s: GameState) {
     }
   }
   if (cardSet.size !== 32) throw new Error(`Expected 32 unique cards played, got ${cardSet.size}`);
+
+  // Match history must accumulate across rounds, not reset - this is what
+  // backs the running points-captured total shown in the UI.
+  if (s.history.length !== roundsCompletedSoFar) {
+    throw new Error(`Expected history to have ${roundsCompletedSoFar} entries, got ${s.history.length}`);
+  }
+  const historyPointsTotal = s.history.reduce((sum, r) => sum + r.pointsCaptured[0] + r.pointsCaptured[1], 0);
+  if (historyPointsTotal !== TOTAL_POINTS * roundsCompletedSoFar) {
+    throw new Error(
+      `Expected cumulative history points ${TOTAL_POINTS * roundsCompletedSoFar}, got ${historyPointsTotal}`
+    );
+  }
 }
 
 function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
@@ -93,7 +105,7 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     rounds++;
     if (rounds > 100) throw new Error('Game did not converge to a winner');
     state = playOneRound(state, difficulty);
-    assertInvariants(state);
+    assertInvariants(state, rounds);
     if (state.phase === 'round_end') {
       state = startNextRound(state);
     }

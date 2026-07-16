@@ -252,6 +252,12 @@ h3 {
   letter-spacing: 0.02em;
 }
 
+.score-points {
+  font-weight: 400;
+  font-size: 0.8em;
+  opacity: 0.75;
+}
+
 .score-a {
   color: #7fd6c1;
 }

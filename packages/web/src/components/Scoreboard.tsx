@@ -1,18 +1,31 @@
+import type { RoundResult } from '@twenty-eight/engine';
+
 interface ScoreboardProps {
   scores: [number, number];
   targetScore: number;
   roundNumber: number;
   trumpSuit: string | null;
   trumpConcealed: boolean;
+  history: RoundResult[];
 }
 
 const SUIT_SYMBOL: Record<string, string> = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
-export function Scoreboard({ scores, targetScore, roundNumber, trumpSuit, trumpConcealed }: ScoreboardProps) {
+export function Scoreboard({ scores, targetScore, roundNumber, trumpSuit, trumpConcealed, history }: ScoreboardProps) {
+  const totalPoints = history.reduce<[number, number]>(
+    (acc, r) => [acc[0] + r.pointsCaptured[0], acc[1] + r.pointsCaptured[1]],
+    [0, 0]
+  );
+
   return (
     <div className="scoreboard">
-      <div className="score-team score-a">Team A: {scores[0]}</div>
-      <div className="score-round">Round {roundNumber} · first to {targetScore}</div>
+      <div className="score-team score-a">
+        Team A: {scores[0]}
+        <span className="score-points"> · {totalPoints[0]} pts</span>
+      </div>
+      <div className="score-round">
+        Round {roundNumber} · first to {targetScore}
+      </div>
       <div className="trump-indicator">
         Trump:{' '}
         {trumpSuit ? (
@@ -23,7 +36,10 @@ export function Scoreboard({ scores, targetScore, roundNumber, trumpSuit, trumpC
           <span className="trump-hidden">—</span>
         )}
       </div>
-      <div className="score-team score-b">Team B: {scores[1]}</div>
+      <div className="score-team score-b">
+        Team B: {scores[1]}
+        <span className="score-points"> · {totalPoints[1]} pts</span>
+      </div>
     </div>
   );
 }
