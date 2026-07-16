@@ -654,6 +654,14 @@ h3 {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
+.bidding-stage {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--gold-light);
+  letter-spacing: 0.01em;
+}
+
 .bidding-turn {
   font-size: 0.8rem;
   color: #cfd8d3;

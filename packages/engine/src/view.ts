@@ -19,6 +19,7 @@ export function getPlayerView(state: GameState, seat: Seat): PlayerView {
     phase: state.phase,
     hand: state.hands[seat],
     handCounts,
+    secondBatchDealt: state.secondBatchDealt,
     bidding: state.bidding,
     trump: {
       suit: trumpSuit,

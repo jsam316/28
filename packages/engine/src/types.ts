@@ -135,6 +135,7 @@ export interface PlayerView {
   phase: Phase;
   hand: Card[];
   handCounts: [number, number, number, number];
+  secondBatchDealt: boolean;
   bidding: BiddingState;
   trump: {
     suit: Suit | null; // null if concealed and you are not the chooser

@@ -107,7 +107,13 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
       <div className="bottom-panel">
         {view.phase === 'bidding' && (
           <>
-            <BiddingPanel bidding={view.bidding} you={you} players={players} onBid={actions.bid} />
+            <BiddingPanel
+              bidding={view.bidding}
+              you={you}
+              players={players}
+              secondBatchDealt={view.secondBatchDealt}
+              onBid={actions.bid}
+            />
             {handPreview}
           </>
         )}
