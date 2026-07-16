@@ -4,6 +4,7 @@ import {
   type BiddingState,
   type Card,
   type GameState,
+  type KunukkuLevel,
   type Player,
   type RoundResult,
   type Seat,
@@ -29,7 +30,8 @@ function dealRound(
   scores: [number, number],
   roundNumber: number,
   opts: Required<GameOptions>,
-  history: RoundResult[]
+  history: RoundResult[],
+  kunukku: [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel]
 ): GameState {
   const deck = shuffle(buildDeck(), opts.rng);
   const hands: [Card[], Card[], Card[], Card[]] = [[], [], [], []];
@@ -85,6 +87,7 @@ function dealRound(
     history,
     log: [`Round ${roundNumber}: cards dealt. ${playerName(players, openingBidder)} opens the bidding.`],
     winner: null,
+    kunukku,
   };
 }
 
@@ -99,7 +102,7 @@ export function createGame(players: Player[], options: GameOptions = {}): GameSt
     maxBid: options.maxBid ?? DEFAULTS.maxBid,
     rng: options.rng ?? Math.random,
   };
-  return dealRound(players, 0, [0, 0], 1, opts, []);
+  return dealRound(players, 0, [0, 0], 1, opts, [], [0, 0, 0, 0]);
 }
 
 export function startNextRound(state: GameState, options: GameOptions = {}): GameState {
@@ -110,7 +113,15 @@ export function startNextRound(state: GameState, options: GameOptions = {}): Gam
     rng: options.rng ?? Math.random,
   };
   const dealerSeat = nextSeat(state.dealerSeat);
-  return dealRound(state.players, dealerSeat, state.scores, state.roundNumber + 1, opts, state.history);
+  return dealRound(
+    state.players,
+    dealerSeat,
+    state.scores,
+    state.roundNumber + 1,
+    opts,
+    state.history,
+    state.kunukku
+  );
 }
 
 function cloneLog(state: GameState, ...lines: string[]): string[] {
@@ -300,6 +311,7 @@ function finishRound(state: GameState): GameState {
 
   const biddingTeam = teamOf(state.bidding.currentBidderSeat as Seat);
   const otherTeam = biddingTeam === 0 ? 1 : 0;
+  const bidderSeat = state.bidding.currentBidderSeat as Seat;
   const bid = state.bidding.currentBid as number;
   const made = pointsCaptured[biddingTeam] >= bid;
   const kappu = tricksWonByTeam[biddingTeam] === 8;
@@ -317,15 +329,43 @@ function finishRound(state: GameState): GameState {
     state.scores[1] + scoreDelta[1],
   ];
 
-  const result = {
-    roundNumber: state.roundNumber,
-    biddingTeam,
-    bid,
-    pointsCaptured,
-    made,
-    kappu,
-    scoreDelta,
-  };
+  // --- Kunukku bookkeeping ---
+  const kunukku = [...state.kunukku] as [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel];
+  const kunukkuMarked: Seat[] = [];
+  const kunukkuCleared: Seat[] = [];
+  const kunukkuDoubled: Seat[] = [];
+
+  // Clearing/doubling only applies if the seat that won THIS bid is currently marked.
+  if (kunukku[bidderSeat] > 0) {
+    if (made) {
+      if (bid >= 20) {
+        const teammate = ((bidderSeat + 2) % 4) as Seat;
+        for (const s of [bidderSeat, teammate]) {
+          if (kunukku[s] > 0) {
+            kunukku[s] = 0;
+            kunukkuCleared.push(s);
+          }
+        }
+      } else {
+        kunukku[bidderSeat] = 0;
+        kunukkuCleared.push(bidderSeat);
+      }
+    } else {
+      kunukku[bidderSeat] = 2;
+      kunukkuDoubled.push(bidderSeat);
+    }
+  }
+
+  // Marking: the defending team is shamed with a kunukku if they failed to score a single point.
+  if (pointsCaptured[otherTeam] === 0) {
+    const teamSeats = ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === otherTeam);
+    for (const s of teamSeats) {
+      if (kunukku[s] === 0) {
+        kunukku[s] = 1;
+        kunukkuMarked.push(s);
+      }
+    }
+  }
 
   const log = [
     ...state.log,
@@ -334,8 +374,36 @@ function finishRound(state: GameState): GameState {
       : `Bidding team captured only ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid failed.`,
     `Score: Team A ${scores[0]} - Team B ${scores[1]}`,
   ];
+  for (const s of kunukkuMarked) log.push(`${playerName(state.players, s)} is shut out and marked with a kunukku!`);
+  for (const s of kunukkuCleared) log.push(`${playerName(state.players, s)} clears their kunukku!`);
+  for (const s of kunukkuDoubled) log.push(`${playerName(state.players, s)} fails to clear their kunukku — it doubles!`);
 
-  const winner: 0 | 1 | null = scores[0] >= state.targetScore ? 0 : scores[1] >= state.targetScore ? 1 : null;
+  let winner: 0 | 1 | null = scores[0] >= state.targetScore ? 0 : scores[1] >= state.targetScore ? 1 : null;
+  let kunukkuBlockedWinner: 0 | 1 | null = null;
+  if (winner !== null) {
+    const winningSeats = ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === winner);
+    if (winningSeats.some((s) => kunukku[s] > 0)) {
+      kunukkuBlockedWinner = winner;
+      log.push(
+        `Team ${winner === 0 ? 'A' : 'B'} reached the target score but must clear their kunukku before winning!`
+      );
+      winner = null;
+    }
+  }
+
+  const result: RoundResult = {
+    roundNumber: state.roundNumber,
+    biddingTeam,
+    bid,
+    pointsCaptured,
+    made,
+    kappu,
+    scoreDelta,
+    kunukkuMarked,
+    kunukkuCleared,
+    kunukkuDoubled,
+    kunukkuBlockedWinner,
+  };
 
   return {
     ...state,
@@ -345,6 +413,7 @@ function finishRound(state: GameState): GameState {
     log,
     winner,
     trump: { ...state.trump, revealed: true },
+    kunukku,
   };
 }
 

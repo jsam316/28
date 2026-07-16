@@ -1,4 +1,4 @@
-import type { Player, Seat } from '@twenty-eight/engine';
+import type { KunukkuLevel, Player, Seat } from '@twenty-eight/engine';
 
 interface PlayerSeatProps {
   player: Player;
@@ -6,15 +6,28 @@ interface PlayerSeatProps {
   isDealer: boolean;
   isBidder: boolean;
   cardCount: number;
+  kunukku: KunukkuLevel;
   position: 'bottom' | 'left' | 'top' | 'right';
 }
 
-export function PlayerSeat({ player, isTurn, isDealer, isBidder, cardCount, position }: PlayerSeatProps) {
+export function PlayerSeat({ player, isTurn, isDealer, isBidder, cardCount, kunukku, position }: PlayerSeatProps) {
   return (
     <div className={`seat seat-${position} ${isTurn ? 'seat-active' : ''}`}>
       <div className="seat-badges">
         {isDealer && <span className="badge badge-dealer">D</span>}
         {isBidder && <span className="badge badge-bidder">Bid</span>}
+        {kunukku > 0 && (
+          <span
+            className={`badge badge-kunukku ${kunukku === 2 ? 'badge-kunukku-double' : ''}`}
+            title={
+              kunukku === 2
+                ? 'Kunukku (doubled) — must bid 20+ and make it to clear both partners'
+                : 'Kunukku — must win the bid and make it to clear'
+            }
+          >
+            Kunukku{kunukku === 2 ? ' ×2' : ''}
+          </span>
+        )}
       </div>
       <div className="seat-avatar">{player.name.slice(0, 1).toUpperCase()}</div>
       <div className="seat-name">

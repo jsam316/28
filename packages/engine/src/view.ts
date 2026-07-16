@@ -37,5 +37,6 @@ export function getPlayerView(state: GameState, seat: Seat): PlayerView {
     winner: state.winner,
     canRequestTrumpReveal: canRequestTrumpReveal(state, seat),
     legalCards: getLegalCards(state, seat),
+    kunukku: state.kunukku,
   };
 }

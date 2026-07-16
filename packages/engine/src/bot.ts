@@ -63,7 +63,10 @@ function decideBid(view: PlayerView, difficulty: BotDifficulty): BotAction {
   const profile = DIFFICULTY_PROFILES[difficulty];
   const { score } = bestSuit(view.hand);
   const jitter = stableJitter(view.hand) * profile.jitterScale;
-  const maxWillingBid = Math.round(profile.bidBase + score * 0.65 + jitter);
+  // A player carrying a kunukku pushes harder to win the bid and clear it,
+  // rather than folding into a passive hand as usual.
+  const redemptionBonus = view.kunukku[view.you] > 0 ? 6 : 0;
+  const maxWillingBid = Math.round(profile.bidBase + score * 0.65 + jitter + redemptionBonus);
   const { currentBid, minBid, maxBid } = view.bidding;
   const nextBid = minNextBid(currentBid, minBid, view.secondBatchDealt);
   if (nextBid > maxBid || maxWillingBid < nextBid) {

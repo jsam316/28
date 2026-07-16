@@ -73,6 +73,8 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
   return s;
 }
 
+const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0 };
+
 function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
   const totalPoints = s.completedTricks.reduce((sum, t) => sum + t.points, 0);
   if (totalPoints !== TOTAL_POINTS) {
@@ -119,9 +121,17 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
   let rounds = 0;
   while (state.phase !== 'game_end') {
     rounds++;
-    if (rounds > 100) throw new Error('Game did not converge to a winner');
+    if (rounds > 300) throw new Error('Game did not converge to a winner (possible kunukku deadlock)');
     state = playOneRound(state, difficulty);
     assertInvariants(state, rounds);
+    for (const k of state.kunukku) {
+      if (k !== 0 && k !== 1 && k !== 2) throw new Error(`Invalid kunukku level ${k}`);
+    }
+    const lastResult = state.history[state.history.length - 1];
+    kunukkuStats.marked += lastResult.kunukkuMarked.length;
+    kunukkuStats.cleared += lastResult.kunukkuCleared.length;
+    kunukkuStats.doubled += lastResult.kunukkuDoubled.length;
+    if (lastResult.kunukkuBlockedWinner !== null) kunukkuStats.blockedWins++;
     if (state.phase === 'round_end') {
       state = startNextRound(state);
     }
@@ -138,3 +148,7 @@ for (let i = 1; i <= GAMES; i++) {
   runFullGame(i, DIFFICULTIES[i % DIFFICULTIES.length]);
 }
 console.log(`\nAll ${GAMES} simulated games completed with valid invariants (mixed bot difficulties).`);
+console.log(
+  `Kunukku activity across all games: ${kunukkuStats.marked} marked, ${kunukkuStats.cleared} cleared, ` +
+    `${kunukkuStats.doubled} doubled, ${kunukkuStats.blockedWins} blocked-win events.`
+);

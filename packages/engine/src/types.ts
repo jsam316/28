@@ -106,7 +106,14 @@ export interface RoundResult {
   made: boolean;
   kappu: boolean; // bidding team won all 8 tricks
   scoreDelta: [number, number];
+  kunukkuMarked: Seat[]; // seats freshly marked with a kunukku this round (shut out as defenders)
+  kunukkuCleared: Seat[]; // seats whose kunukku was cleared this round
+  kunukkuDoubled: Seat[]; // seats whose kunukku was doubled this round (failed a clearance attempt)
+  kunukkuBlockedWinner: 0 | 1 | null; // team that reached the target score but is held back by a kunukku mark
 }
+
+// Kunukku ("earring") is a per-seat shame penalty: 0 = clear, 1 = marked, 2 = doubled.
+export type KunukkuLevel = 0 | 1 | 2;
 
 export interface GameState {
   players: Player[];
@@ -126,6 +133,7 @@ export interface GameState {
   history: RoundResult[];
   log: string[];
   winner: 0 | 1 | null;
+  kunukku: [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel];
 }
 
 export interface PlayerView {
@@ -153,4 +161,5 @@ export interface PlayerView {
   winner: 0 | 1 | null;
   canRequestTrumpReveal: boolean;
   legalCards: Card[];
+  kunukku: [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel];
 }

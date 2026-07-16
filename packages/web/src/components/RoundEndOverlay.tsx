@@ -13,6 +13,8 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
       ? players.filter((p) => p.seat % 2 === 0).map((p) => p.name).join(' & ')
       : players.filter((p) => p.seat % 2 === 1).map((p) => p.name).join(' & ');
 
+  const playerName = (seat: number) => players.find((p) => p.seat === seat)?.name ?? `Seat ${seat}`;
+
   return (
     <div className="overlay">
       <div className="overlay-card">
@@ -26,12 +28,32 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
             ? result.kappu
               ? 'KAPPU! They swept all 8 kai — double points!'
               : 'Bid made!'
-            : 'Bid failed — the bid was set.'}
+            : `Bid failed — needed ${result.bid}, captured only ${result.pointsCaptured[result.biddingTeam]}.`}
         </p>
         <p>
           Score change: Team A {result.scoreDelta[0] > 0 ? `+${result.scoreDelta[0]}` : 0}, Team B{' '}
           {result.scoreDelta[1] > 0 ? `+${result.scoreDelta[1]}` : 0}
         </p>
+        {result.kunukkuMarked.length > 0 && (
+          <p className="result-failed">
+            Shut out! {result.kunukkuMarked.map(playerName).join(' & ')} {result.kunukkuMarked.length > 1 ? 'are' : 'is'}{' '}
+            marked with a kunukku.
+          </p>
+        )}
+        {result.kunukkuCleared.length > 0 && (
+          <p className="result-made">{result.kunukkuCleared.map(playerName).join(' & ')} cleared their kunukku!</p>
+        )}
+        {result.kunukkuDoubled.length > 0 && (
+          <p className="result-failed">
+            {result.kunukkuDoubled.map(playerName).join(' & ')} failed to clear the kunukku — it doubled!
+          </p>
+        )}
+        {result.kunukkuBlockedWinner !== null && (
+          <p className="result-failed">
+            Team {result.kunukkuBlockedWinner === 0 ? 'A' : 'B'} reached the target score but must clear their kunukku
+            before winning — the match continues!
+          </p>
+        )}
         {onContinue && (
           <button type="button" className="btn btn-primary" onClick={onContinue}>
             Next round
