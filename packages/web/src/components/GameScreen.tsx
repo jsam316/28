@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { getCurrentActorSeat, type Card, type PlayerView, type Suit } from '@twenty-eight/engine';
 import { PlayerSeat, seatPosition } from './PlayerSeat';
 import { TrickArea } from './TrickArea';
@@ -28,12 +29,29 @@ interface GameScreenProps {
   exitLabel?: string;
 }
 
+const ROUND_END_REVEAL_DELAY_MS = 750;
+
 export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitLabel = 'Home' }: GameScreenProps) {
   const { you, players } = view;
 
   const currentTurnSeat = getCurrentActorSeat(view);
 
   const lastResult = view.history[view.history.length - 1];
+
+  // The last trick of a round completes and the round ends in the same
+  // state update, so without a beat here the final card played (and its
+  // sweep-to-winner animation) never gets a chance to render before the
+  // round-end overlay covers the table.
+  const [revealOverlay, setRevealOverlay] = useState(false);
+  useEffect(() => {
+    if (view.phase === 'round_end' || view.phase === 'game_end') {
+      const timer = setTimeout(() => setRevealOverlay(true), ROUND_END_REVEAL_DELAY_MS);
+      return () => clearTimeout(timer);
+    }
+    setRevealOverlay(false);
+  }, [view.phase]);
+
+  const showTable = view.phase === 'playing' || ((view.phase === 'round_end' || view.phase === 'game_end') && !revealOverlay);
 
   const handPreview = (
     <div className="hand">
@@ -77,8 +95,12 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
           />
         ))}
 
-        {view.phase === 'playing' && (
-          <TrickArea cards={view.trick.cards} you={you} completedTricks={view.completedTricks} />
+        {showTable && (
+          <TrickArea
+            cards={view.phase === 'playing' ? view.trick.cards : []}
+            you={you}
+            completedTricks={view.completedTricks}
+          />
         )}
       </div>
 
@@ -119,7 +141,7 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
         )}
       </div>
 
-      {view.phase === 'round_end' && lastResult && (
+      {revealOverlay && view.phase === 'round_end' && lastResult && (
         <RoundEndOverlay
           result={lastResult}
           players={players}
@@ -128,7 +150,7 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
         />
       )}
 
-      {view.phase === 'game_end' && view.winner !== null && (
+      {revealOverlay && view.phase === 'game_end' && view.winner !== null && (
         <GameEndOverlay winner={view.winner} scores={view.scores} onRestart={actions.restart} />
       )}
     </div>

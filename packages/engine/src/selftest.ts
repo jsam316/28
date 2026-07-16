@@ -84,6 +84,13 @@ function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
   }
   if (cardSet.size !== 32) throw new Error(`Expected 32 unique cards played, got ${cardSet.size}`);
 
+  // The final trick's 4 cards must survive into the round-end state so the
+  // UI can actually render/animate the last card played, not just the
+  // engine's internal bookkeeping of who won it.
+  if (s.trick.cards.length !== 4) {
+    throw new Error(`Expected the final trick to retain all 4 cards, got ${s.trick.cards.length}`);
+  }
+
   // Match history must accumulate across rounds, not reset - this is what
   // backs the running points-captured total shown in the UI.
   if (s.history.length !== roundsCompletedSoFar) {

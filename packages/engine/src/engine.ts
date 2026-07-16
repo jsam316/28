@@ -257,7 +257,7 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
   log.push(`${playerName(state.players, completed.winnerSeat)} wins the kai (${completed.points} pts).`);
 
   if (completedTricks.length === 8) {
-    return finishRound({ ...state, hands, completedTricks, log: cloneLog(state, ...log) });
+    return finishRound({ ...state, hands, trick, completedTricks, log: cloneLog(state, ...log) });
   }
 
   const newTrick = { leadSeat: completed.winnerSeat, cards: [], trickNumber: trick.trickNumber + 1 };
