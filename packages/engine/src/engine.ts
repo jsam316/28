@@ -1,5 +1,5 @@
 import { buildDeck, shuffle } from './deck.js';
-import { bidStakes, legalCardsFor, resolveTrick } from './rules.js';
+import { bidStakes, legalCardsFor, minNextBid, resolveTrick } from './rules.js';
 import {
   type BiddingState,
   type Card,
@@ -139,7 +139,7 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
     bidding.passed[seat] = true;
     log.push(`${playerName(state.players, seat)} passes.`);
   } else {
-    const minAllowed = bidding.currentBid === null ? bidding.minBid : bidding.currentBid + 1;
+    const minAllowed = minNextBid(bidding.currentBid, bidding.minBid, state.secondBatchDealt);
     if (action < minAllowed) throw new Error(`Bid must be at least ${minAllowed}`);
     if (action > bidding.maxBid) throw new Error(`Bid cannot exceed ${bidding.maxBid}`);
     bidding.currentBid = action;

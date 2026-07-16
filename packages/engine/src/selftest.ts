@@ -8,6 +8,7 @@ import {
   createGame,
   decideBotAction,
   getPlayerView,
+  minNextBid,
   placeBid,
   playCard,
   requestTrumpReveal,
@@ -34,6 +35,14 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
     const view = getPlayerView(s, seat);
     const action = decideBotAction(view, difficulty);
     if (action.type !== 'bid') throw new Error('Expected bid action');
+    if (typeof action.value === 'number') {
+      const required = minNextBid(s.bidding.currentBid, s.bidding.minBid, s.secondBatchDealt);
+      if (action.value < required) {
+        throw new Error(
+          `Bot bid ${action.value} below the required minimum ${required} (secondBatchDealt=${s.secondBatchDealt})`
+        );
+      }
+    }
     s = placeBid(s, seat, action.value);
   }
 

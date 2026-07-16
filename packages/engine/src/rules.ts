@@ -13,6 +13,17 @@ export function legalCardsFor(hand: Card[], ledSuit: Suit | null): Card[] {
   return followers.length > 0 ? followers : hand.slice();
 }
 
+// Once the second round of bidding opens (everyone has all 8 cards), a new
+// bid must be at least this high, even if the standing bid from round 1 was
+// lower - round 2 is for confident, full-hand bids only.
+export const SECOND_ROUND_MIN_BID = 24;
+
+export function minNextBid(currentBid: number | null, minBid: number, secondBatchDealt: boolean): number {
+  if (currentBid === null) return minBid;
+  const next = currentBid + 1;
+  return secondBatchDealt ? Math.max(next, SECOND_ROUND_MIN_BID) : next;
+}
+
 export interface BidStakes {
   win: number;
   failPenalty: number;
