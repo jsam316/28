@@ -7,6 +7,7 @@ import { BiddingPanel } from './BiddingPanel';
 import { TrumpPanel } from './TrumpPanel';
 import { Scoreboard } from './Scoreboard';
 import { Ticker } from './Ticker';
+import { TrumpBanner } from './TrumpBanner';
 import { RoundEndOverlay } from './RoundEndOverlay';
 import { GameEndOverlay } from './GameEndOverlay';
 
@@ -51,6 +52,8 @@ export function GameScreen({ view, actions, waitingForHostMessage }: GameScreenP
       />
 
       <Ticker log={view.log} />
+
+      {view.phase === 'playing' && view.trump.suit && <TrumpBanner suit={view.trump.suit} />}
 
       <div className="table">
         {players.map((p) => (
