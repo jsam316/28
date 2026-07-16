@@ -20,7 +20,7 @@ export interface GameOptions {
   rng?: () => number;
 }
 
-const DEFAULTS = { targetScore: 6, minBid: 16, maxBid: 28 };
+const DEFAULTS = { targetScore: 6, minBid: 14, maxBid: 28 };
 
 function dealRound(
   players: Player[],
