@@ -1,3 +1,4 @@
+import { minNextBid } from './rules.js';
 import {
   type Card,
   type PlayerView,
@@ -64,7 +65,7 @@ function decideBid(view: PlayerView, difficulty: BotDifficulty): BotAction {
   const jitter = stableJitter(view.hand) * profile.jitterScale;
   const maxWillingBid = Math.round(profile.bidBase + score * 0.65 + jitter);
   const { currentBid, minBid, maxBid } = view.bidding;
-  const nextBid = currentBid === null ? minBid : currentBid + 1;
+  const nextBid = minNextBid(currentBid, minBid, view.secondBatchDealt);
   if (nextBid > maxBid || maxWillingBid < nextBid) {
     return { type: 'bid', value: 'pass' };
   }

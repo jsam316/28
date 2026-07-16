@@ -252,6 +252,12 @@ h3 {
   letter-spacing: 0.02em;
 }
 
+.score-points {
+  font-weight: 400;
+  font-size: 0.8em;
+  opacity: 0.75;
+}
+
 .score-a {
   color: #7fd6c1;
 }
@@ -646,6 +652,14 @@ h3 {
   align-items: center;
   text-align: center;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bidding-stage {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--gold-light);
+  letter-spacing: 0.01em;
 }
 
 .bidding-turn {

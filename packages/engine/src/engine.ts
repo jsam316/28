@@ -1,10 +1,11 @@
 import { buildDeck, shuffle } from './deck.js';
-import { bidStakes, legalCardsFor, resolveTrick } from './rules.js';
+import { bidStakes, legalCardsFor, minNextBid, resolveTrick } from './rules.js';
 import {
   type BiddingState,
   type Card,
   type GameState,
   type Player,
+  type RoundResult,
   type Seat,
   type Suit,
   TOTAL_POINTS,
@@ -27,7 +28,8 @@ function dealRound(
   dealerSeat: Seat,
   scores: [number, number],
   roundNumber: number,
-  opts: Required<GameOptions>
+  opts: Required<GameOptions>,
+  history: RoundResult[]
 ): GameState {
   const deck = shuffle(buildDeck(), opts.rng);
   const hands: [Card[], Card[], Card[], Card[]] = [[], [], [], []];
@@ -80,7 +82,7 @@ function dealRound(
     scores,
     targetScore: opts.targetScore,
     roundNumber,
-    history: [],
+    history,
     log: [`Round ${roundNumber}: cards dealt. ${playerName(players, openingBidder)} opens the bidding.`],
     winner: null,
   };
@@ -97,7 +99,7 @@ export function createGame(players: Player[], options: GameOptions = {}): GameSt
     maxBid: options.maxBid ?? DEFAULTS.maxBid,
     rng: options.rng ?? Math.random,
   };
-  return dealRound(players, 0, [0, 0], 1, opts);
+  return dealRound(players, 0, [0, 0], 1, opts, []);
 }
 
 export function startNextRound(state: GameState, options: GameOptions = {}): GameState {
@@ -108,11 +110,21 @@ export function startNextRound(state: GameState, options: GameOptions = {}): Gam
     rng: options.rng ?? Math.random,
   };
   const dealerSeat = nextSeat(state.dealerSeat);
-  return dealRound(state.players, dealerSeat, state.scores, state.roundNumber + 1, opts);
+  return dealRound(state.players, dealerSeat, state.scores, state.roundNumber + 1, opts, state.history);
 }
 
 function cloneLog(state: GameState, ...lines: string[]): string[] {
   return [...state.log, ...lines];
+}
+
+function dealSecondBatch(state: GameState): { hands: GameState['hands']; stock: GameState['stock'] } {
+  const hands = structuredClone(state.hands) as GameState['hands'];
+  const stock = structuredClone(state.stock) as GameState['stock'];
+  for (let s = 0; s < 4; s++) {
+    hands[s as Seat].push(...stock[s as Seat]);
+    stock[s as Seat] = [];
+  }
+  return { hands, stock };
 }
 
 export function placeBid(state: GameState, seat: Seat, action: 'pass' | number): GameState {
@@ -127,7 +139,7 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
     bidding.passed[seat] = true;
     log.push(`${playerName(state.players, seat)} passes.`);
   } else {
-    const minAllowed = bidding.currentBid === null ? bidding.minBid : bidding.currentBid + 1;
+    const minAllowed = minNextBid(bidding.currentBid, bidding.minBid, state.secondBatchDealt);
     if (action < minAllowed) throw new Error(`Bid must be at least ${minAllowed}`);
     if (action > bidding.maxBid) throw new Error(`Bid cannot exceed ${bidding.maxBid}`);
     bidding.currentBid = action;
@@ -139,66 +151,81 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
 
   const remaining: Seat[] = [0, 1, 2, 3].filter((s) => !bidding.passed[s as Seat]) as Seat[];
 
-  if (remaining.length === 0) {
-    // Everyone passed: dealer is forced to take the minimum bid.
-    bidding.currentBid = bidding.minBid;
-    bidding.currentBidderSeat = state.dealerSeat;
-    log.push(
-      `Everyone passed. ${playerName(state.players, state.dealerSeat)} is forced to take the bid at ${bidding.minBid}.`
-    );
-    return {
-      ...state,
-      bidding,
-      phase: 'trump_selection',
-      log: cloneLog(state, ...log),
-    };
-  }
+  let concluded = false;
 
-  if (remaining.length === 1 && bidding.currentBidderSeat !== null) {
+  if (remaining.length === 0) {
+    concluded = true;
+    if (bidding.currentBidderSeat === null) {
+      // Nobody has bid at all yet (only possible in the first bidding
+      // stage): dealer is forced to take the minimum bid.
+      bidding.currentBid = bidding.minBid;
+      bidding.currentBidderSeat = state.dealerSeat;
+      log.push(
+        `Everyone passed. ${playerName(state.players, state.dealerSeat)} is forced to take the bid at ${bidding.minBid}.`
+      );
+    } else {
+      // Someone already holds a bid and nobody wants to raise further
+      // (the normal way the second stage ends): their bid stands.
+      log.push(
+        `No further raises. ${playerName(state.players, bidding.currentBidderSeat)} holds the bid at ${bidding.currentBid}.`
+      );
+    }
+  } else if (remaining.length === 1 && bidding.currentBidderSeat !== null) {
+    concluded = true;
     log.push(
       `Bidding closed. ${playerName(state.players, bidding.currentBidderSeat)} wins the bid at ${bidding.currentBid}.`
     );
+  }
+
+  if (!concluded) {
+    let next = nextSeat(seat);
+    while (bidding.passed[next]) next = nextSeat(next);
+    bidding.turnSeat = next;
+    return { ...state, bidding, log: cloneLog(state, ...log) };
+  }
+
+  if (!state.secondBatchDealt) {
+    // End of the first bidding stage: deal the rest of the hand and reopen
+    // bidding for the second stage, now that everyone can see all 8 cards.
+    const { hands, stock } = dealSecondBatch(state);
+    const reopened: BiddingState = {
+      ...bidding,
+      passed: [false, false, false, false],
+      turnSeat: nextSeat(state.dealerSeat),
+    };
+    log.push(
+      `The rest of the hand is dealt. ${playerName(state.players, reopened.turnSeat)} opens the second bidding round.`
+    );
     return {
       ...state,
-      bidding,
-      phase: 'trump_selection',
+      hands,
+      stock,
+      secondBatchDealt: true,
+      bidding: reopened,
       log: cloneLog(state, ...log),
     };
   }
 
-  let next = nextSeat(seat);
-  while (bidding.passed[next]) next = nextSeat(next);
-  bidding.turnSeat = next;
-
-  return { ...state, bidding, log: cloneLog(state, ...log) };
+  return {
+    ...state,
+    bidding,
+    phase: 'trump_selection',
+    log: cloneLog(state, ...log),
+  };
 }
 
 export function chooseTrump(state: GameState, seat: Seat, suit: Suit): GameState {
   if (state.phase !== 'trump_selection') throw new Error('Not in trump selection phase');
   if (state.bidding.currentBidderSeat !== seat) throw new Error('Only the bid winner chooses trump');
 
-  const hands = structuredClone(state.hands) as GameState['hands'];
-  const stock = structuredClone(state.stock) as GameState['stock'];
-
-  for (let s = 0; s < 4; s++) {
-    hands[s as Seat].push(...stock[s as Seat]);
-    stock[s as Seat] = [];
-  }
-
   const leadSeat = nextSeat(state.dealerSeat);
 
   return {
     ...state,
-    hands,
-    stock,
-    secondBatchDealt: true,
     trump: { suit, chosenBySeat: seat, revealed: false },
     phase: 'playing',
     trick: { leadSeat, cards: [], trickNumber: 1 },
-    log: cloneLog(
-      state,
-      `${playerName(state.players, seat)} picks trump (concealed) and the rest of the hand is dealt.`
-    ),
+    log: cloneLog(state, `${playerName(state.players, seat)} picks trump (concealed) and play begins.`),
   };
 }
 
@@ -255,7 +282,7 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
   log.push(`${playerName(state.players, completed.winnerSeat)} wins the kai (${completed.points} pts).`);
 
   if (completedTricks.length === 8) {
-    return finishRound({ ...state, hands, completedTricks, log: cloneLog(state, ...log) });
+    return finishRound({ ...state, hands, trick, completedTricks, log: cloneLog(state, ...log) });
   }
 
   const newTrick = { leadSeat: completed.winnerSeat, cards: [], trickNumber: trick.trickNumber + 1 };
