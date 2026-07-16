@@ -24,9 +24,11 @@ interface GameScreenProps {
   view: PlayerView;
   actions: GameScreenActions;
   waitingForHostMessage?: string;
+  onExit?: () => void;
+  exitLabel?: string;
 }
 
-export function GameScreen({ view, actions, waitingForHostMessage }: GameScreenProps) {
+export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitLabel = 'Home' }: GameScreenProps) {
   const { you, players } = view;
 
   const currentTurnSeat = getCurrentActorSeat(view);
@@ -43,6 +45,12 @@ export function GameScreen({ view, actions, waitingForHostMessage }: GameScreenP
 
   return (
     <div className="game-screen">
+      {onExit && (
+        <button type="button" className="btn-link exit-link" onClick={onExit}>
+          &larr; {exitLabel}
+        </button>
+      )}
+
       <Scoreboard
         scores={view.scores}
         targetScore={view.targetScore}
