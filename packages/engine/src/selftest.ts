@@ -1,7 +1,8 @@
 import {
-  GameState,
-  Player,
-  Seat,
+  type BotDifficulty,
+  type GameState,
+  type Player,
+  type Seat,
   TOTAL_POINTS,
   chooseTrump,
   createGame,
@@ -23,7 +24,7 @@ function makePlayers(): Player[] {
   }));
 }
 
-function playOneRound(state: GameState): GameState {
+function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
   let s = state;
   let guard = 0;
   while (s.phase === 'bidding') {
@@ -31,7 +32,7 @@ function playOneRound(state: GameState): GameState {
     if (guard > 200) throw new Error('Bidding stuck in a loop');
     const seat = s.bidding.turnSeat;
     const view = getPlayerView(s, seat);
-    const action = decideBotAction(view);
+    const action = decideBotAction(view, difficulty);
     if (action.type !== 'bid') throw new Error('Expected bid action');
     s = placeBid(s, seat, action.value);
   }
@@ -39,7 +40,7 @@ function playOneRound(state: GameState): GameState {
   if (s.phase === 'trump_selection') {
     const seat = s.bidding.currentBidderSeat as Seat;
     const view = getPlayerView(s, seat);
-    const action = decideBotAction(view);
+    const action = decideBotAction(view, difficulty);
     if (action.type !== 'trump') throw new Error('Expected trump action');
     s = chooseTrump(s, seat, action.suit);
   }
@@ -50,7 +51,7 @@ function playOneRound(state: GameState): GameState {
     if (guard > 500) throw new Error('Playing stuck in a loop');
     const seat = s.trick.cards.length === 0 ? (s.trick.leadSeat as Seat) : (((s.trick.cards[s.trick.cards.length - 1].seat + 1) % 4) as Seat);
     const view = getPlayerView(s, seat);
-    const action = decideBotAction(view);
+    const action = decideBotAction(view, difficulty);
     if (action.type === 'reveal') {
       s = requestTrumpReveal(s, seat);
     } else if (action.type === 'play') {
@@ -84,14 +85,14 @@ function assertInvariants(s: GameState) {
   if (cardSet.size !== 32) throw new Error(`Expected 32 unique cards played, got ${cardSet.size}`);
 }
 
-function runFullGame(gameIndex: number) {
+function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
   const players = makePlayers();
   let state = createGame(players, { targetScore: 6 });
   let rounds = 0;
   while (state.phase !== 'game_end') {
     rounds++;
     if (rounds > 100) throw new Error('Game did not converge to a winner');
-    state = playOneRound(state);
+    state = playOneRound(state, difficulty);
     assertInvariants(state);
     if (state.phase === 'round_end') {
       state = startNextRound(state);
@@ -99,12 +100,13 @@ function runFullGame(gameIndex: number) {
   }
   const last = state.history[state.history.length - 1];
   console.log(
-    `Game ${gameIndex}: winner=Team ${state.winner} after ${rounds} rounds, final score ${state.scores[0]}-${state.scores[1]}, last round bid=${last.bid} made=${last.made}`
+    `Game ${gameIndex} [${difficulty}]: winner=Team ${state.winner} after ${rounds} rounds, final score ${state.scores[0]}-${state.scores[1]}, last round bid=${last.bid} made=${last.made}`
   );
 }
 
 const GAMES = 200;
+const DIFFICULTIES: BotDifficulty[] = ['rookie', 'regular', 'expert'];
 for (let i = 1; i <= GAMES; i++) {
-  runFullGame(i);
+  runFullGame(i, DIFFICULTIES[i % DIFFICULTIES.length]);
 }
-console.log(`\nAll ${GAMES} simulated games completed with valid invariants.`);
+console.log(`\nAll ${GAMES} simulated games completed with valid invariants (mixed bot difficulties).`);

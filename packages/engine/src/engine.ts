@@ -1,5 +1,5 @@
 import { buildDeck, shuffle } from './deck.js';
-import { legalCardsFor, resolveTrick } from './rules.js';
+import { bidStakes, legalCardsFor, resolveTrick } from './rules.js';
 import {
   type BiddingState,
   type Card,
@@ -277,11 +277,12 @@ function finishRound(state: GameState): GameState {
   const made = pointsCaptured[biddingTeam] >= bid;
   const kappu = tricksWonByTeam[biddingTeam] === 8;
 
+  const stakes = bidStakes(bid);
   const scoreDelta: [number, number] = [0, 0];
   if (made) {
-    scoreDelta[biddingTeam] = kappu ? 2 : 1;
+    scoreDelta[biddingTeam] = kappu ? stakes.win * 2 : stakes.win;
   } else {
-    scoreDelta[otherTeam] = 1;
+    scoreDelta[otherTeam] = stakes.failPenalty;
   }
 
   const scores: [number, number] = [
