@@ -559,6 +559,59 @@ h3 {
   }
 }
 
+.trump-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.6rem 0.75rem 0;
+  padding: 0.4rem 1.1rem;
+  background: var(--panel-bg);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  width: fit-content;
+  align-self: center;
+}
+
+.trump-banner-suit {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.trump-banner-suit.red {
+  color: var(--card-red);
+}
+
+.trump-banner-suit.black {
+  color: #f4f1ea;
+}
+
+.trump-banner-label {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 0.9rem;
+  color: #dce8e2;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .trump-banner {
+    animation: trump-reveal 0.4s ease-out;
+  }
+}
+
+@keyframes trump-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 .bottom-panel {
   display: flex;
   flex-direction: column;
