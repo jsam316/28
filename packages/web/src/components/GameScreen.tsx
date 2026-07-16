@@ -157,7 +157,13 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
       )}
 
       {revealOverlay && view.phase === 'game_end' && view.winner !== null && (
-        <GameEndOverlay winner={view.winner} scores={view.scores} onRestart={actions.restart} />
+        <GameEndOverlay
+          winner={view.winner}
+          scores={view.scores}
+          lastResult={lastResult}
+          players={players}
+          onRestart={actions.restart}
+        />
       )}
     </div>
   );

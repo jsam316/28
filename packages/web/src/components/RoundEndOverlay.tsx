@@ -26,7 +26,7 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
             ? result.kappu
               ? 'KAPPU! They swept all 8 kai — double points!'
               : 'Bid made!'
-            : 'Bid failed — the bid was set.'}
+            : `Bid failed — needed ${result.bid}, captured only ${result.pointsCaptured[result.biddingTeam]}.`}
         </p>
         <p>
           Score change: Team A {result.scoreDelta[0] > 0 ? `+${result.scoreDelta[0]}` : 0}, Team B{' '}
