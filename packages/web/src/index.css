@@ -435,6 +435,16 @@ h3 {
   color: #2b2000;
 }
 
+.badge-kunukku {
+  background: #7a1f2b;
+  color: #ffd9dc;
+}
+
+.badge-kunukku-double {
+  background: #4a0e17;
+  color: #ffb3ba;
+}
+
 .seat-disconnected {
   color: #f2b8b8;
   font-style: italic;

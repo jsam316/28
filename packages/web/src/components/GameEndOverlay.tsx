@@ -14,6 +14,8 @@ export function GameEndOverlay({ winner, scores, lastResult, players, onRestart 
       ? players.filter((p) => p.seat % 2 === 0).map((p) => p.name).join(' & ')
       : players.filter((p) => p.seat % 2 === 1).map((p) => p.name).join(' & ');
 
+  const playerName = (seat: number) => players.find((p) => p.seat === seat)?.name ?? `Seat ${seat}`;
+
   return (
     <div className="overlay">
       <div className="overlay-card">
@@ -31,6 +33,9 @@ export function GameEndOverlay({ winner, scores, lastResult, players, onRestart 
                   : 'Bid made!'
                 : `Bid failed — needed ${lastResult.bid}, captured only ${lastResult.pointsCaptured[lastResult.biddingTeam]}.`}
             </p>
+            {lastResult.kunukkuCleared.length > 0 && (
+              <p className="result-made">{lastResult.kunukkuCleared.map(playerName).join(' & ')} cleared their kunukku!</p>
+            )}
           </>
         )}
         <p>

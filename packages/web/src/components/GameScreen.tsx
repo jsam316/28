@@ -91,6 +91,7 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
             isDealer={view.dealerSeat === p.seat}
             isBidder={view.bidding.currentBidderSeat === p.seat && view.phase !== 'bidding'}
             cardCount={view.handCounts[p.seat]}
+            kunukku={view.kunukku[p.seat]}
             position={seatPosition(p.seat, you)}
           />
         ))}
