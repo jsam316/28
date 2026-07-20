@@ -659,6 +659,44 @@ h3 {
   font-style: italic;
 }
 
+.stake-panel {
+  width: 100%;
+  max-width: 640px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.stake-prompt {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.stake-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-danger {
+  background: linear-gradient(180deg, #d4636f, #a72836 60%, #7a1f2b);
+  color: #fff;
+}
+
+.stake-flag {
+  color: #f2b8b8;
+  font-weight: 700;
+}
+
 .bidding-panel {
   width: 100%;
   max-width: 640px;

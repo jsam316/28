@@ -34,8 +34,17 @@ export function GameEndOverlay({ winner, baseCards, totalBaseCards, lastResult, 
                   : 'Bid made!'
                 : `Bid failed — needed ${lastResult.bid}, captured only ${lastResult.pointsCaptured[lastResult.biddingTeam]}.`}
             </p>
+            {lastResult.stakeMultiplier > 1 && (
+              <p className="result-failed">
+                Stakes were {lastResult.redoubled ? 'REDOUBLED (×4)' : 'DOUBLED (×2)'} — {lastResult.cardsTransferred}{' '}
+                base card{lastResult.cardsTransferred > 1 ? 's' : ''} changed hands.
+              </p>
+            )}
             {lastResult.kunukkuCleared.length > 0 && (
-              <p className="result-made">{lastResult.kunukkuCleared.map(playerName).join(' & ')} cleared their kunukku!</p>
+              <p className="result-made">
+                {lastResult.kunukkuCleared.map(playerName).join(' & ')}{' '}
+                {lastResult.kunukkuCleared.length > 1 ? 'shed' : 'sheds'} kunukku clips!
+              </p>
             )}
           </>
         )}

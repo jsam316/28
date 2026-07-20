@@ -9,10 +9,8 @@ interface OnlineGameProps {
 }
 
 export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
-  const { status, error, seat, room, view, startGame, bid, pickTrump, callTrump, play, nextRound } = useOnlineGame(
-    name,
-    roomCode
-  );
+  const { status, error, seat, room, view, startGame, bid, pickTrump, callTrump, play, double, redouble, nextRound } =
+    useOnlineGame(name, roomCode);
   const [baseCards, setBaseCards] = useState(6);
 
   if (status === 'error') {
@@ -87,7 +85,7 @@ export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
   return (
     <GameScreen
       view={view}
-      actions={{ bid, pickTrump, callTrump, play, nextRound }}
+      actions={{ bid, pickTrump, callTrump, play, double, redouble, nextRound }}
       waitingForHostMessage="Waiting for a player to start the next round..."
       onExit={onExit}
       exitLabel="Leave room"

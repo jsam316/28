@@ -3,6 +3,7 @@ import type { RoundResult } from '@twenty-eight/engine';
 interface ScoreboardProps {
   baseCards: [number, number];
   totalBaseCards: number;
+  stakeMultiplier: number;
   roundNumber: number;
   trumpSuit: string | null;
   trumpConcealed: boolean;
@@ -14,6 +15,7 @@ const SUIT_SYMBOL: Record<string, string> = { S: '♠', H: '♥', D: '♦', C: '
 export function Scoreboard({
   baseCards,
   totalBaseCards,
+  stakeMultiplier,
   roundNumber,
   trumpSuit,
   trumpConcealed,
@@ -33,6 +35,7 @@ export function Scoreboard({
       </div>
       <div className="score-round">
         Round {roundNumber} · collect all {totalBaseCards}
+        {stakeMultiplier > 1 && <span className="stake-flag"> · stakes ×{stakeMultiplier}</span>}
       </div>
       <div className="trump-indicator">
         Trump:{' '}

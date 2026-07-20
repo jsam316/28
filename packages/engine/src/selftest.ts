@@ -7,6 +7,9 @@ import {
   chooseTrump,
   createGame,
   decideBotAction,
+  declareDouble,
+  declareRedouble,
+  getCurrentActorSeat,
   getPlayerView,
   minNextBid,
   placeBid,
@@ -54,6 +57,24 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
     s = chooseTrump(s, seat, action.suit);
   }
 
+  if (s.phase === 'doubling') {
+    const seat = getCurrentActorSeat(s) as Seat;
+    const view = getPlayerView(s, seat);
+    const action = decideBotAction(view, difficulty);
+    if (action.type !== 'double') throw new Error('Expected double action');
+    if (action.accept) doubleStats.doubles++;
+    s = declareDouble(s, seat, action.accept);
+  }
+
+  if (s.phase === 'redoubling') {
+    const seat = getCurrentActorSeat(s) as Seat;
+    const view = getPlayerView(s, seat);
+    const action = decideBotAction(view, difficulty);
+    if (action.type !== 'redouble') throw new Error('Expected redouble action');
+    if (action.accept) doubleStats.redoubles++;
+    s = declareRedouble(s, seat, action.accept);
+  }
+
   guard = 0;
   while (s.phase === 'playing') {
     guard++;
@@ -74,6 +95,7 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
 }
 
 const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0 };
+const doubleStats = { doubles: 0, redoubles: 0 };
 
 function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
   const totalPoints = s.completedTricks.reduce((sum, t) => sum + t.points, 0);
@@ -140,6 +162,17 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     kunukkuStats.cleared += lastResult.kunukkuCleared.length;
     kunukkuStats.doubled += lastResult.kunukkuDoubled.length;
     if (lastResult.kunukkuBlockedWinner !== null) kunukkuStats.blockedWins++;
+    if (![1, 2, 4].includes(lastResult.stakeMultiplier)) {
+      throw new Error(`Invalid stake multiplier ${lastResult.stakeMultiplier}`);
+    }
+    if (lastResult.cardsTransferred > lastResult.stakeMultiplier) {
+      throw new Error(
+        `Transferred ${lastResult.cardsTransferred} cards with multiplier ${lastResult.stakeMultiplier}`
+      );
+    }
+    if (lastResult.redoubled && !lastResult.doubled) {
+      throw new Error('Redoubled round without a double');
+    }
     if (state.phase === 'round_end') {
       state = startNextRound(state);
     }
@@ -161,6 +194,7 @@ for (let i = 1; i <= GAMES; i++) {
 }
 console.log(`\nAll ${GAMES} simulated games completed with valid invariants (mixed bot difficulties).`);
 console.log(
-  `Kunukku activity across all games: ${kunukkuStats.marked} marked, ${kunukkuStats.cleared} cleared, ` +
-    `${kunukkuStats.doubled} doubled, ${kunukkuStats.blockedWins} blocked-win events.`
+  `Kunukku activity across all games: ${kunukkuStats.marked} first clips, ${kunukkuStats.cleared} seats shed clips, ` +
+    `${kunukkuStats.doubled} second clips, ${kunukkuStats.blockedWins} blocked-win events.`
 );
+console.log(`Stake calls across all games: ${doubleStats.doubles} doubles, ${doubleStats.redoubles} redoubles.`);

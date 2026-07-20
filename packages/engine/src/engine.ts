@@ -84,6 +84,9 @@ function dealRound(
     completedTricks: [],
     baseCards,
     totalBaseCards,
+    stakeMultiplier: 1,
+    doubled: false,
+    redoubled: false,
     roundNumber,
     history,
     log: [`Round ${roundNumber}: cards dealt. ${playerName(players, openingBidder)} opens the bidding.`],
@@ -236,19 +239,69 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
   };
 }
 
+function beginPlay(state: GameState, log: string[]): GameState {
+  const leadSeat = nextSeat(state.dealerSeat);
+  return {
+    ...state,
+    phase: 'playing',
+    trick: { leadSeat, cards: [], trickNumber: 1 },
+    log: cloneLog(state, ...log),
+  };
+}
+
 export function chooseTrump(state: GameState, seat: Seat, suit: Suit): GameState {
   if (state.phase !== 'trump_selection') throw new Error('Not in trump selection phase');
   if (state.bidding.currentBidderSeat !== seat) throw new Error('Only the bid winner chooses trump');
 
-  const leadSeat = nextSeat(state.dealerSeat);
-
+  const deciderSeat = nextSeat(seat);
   return {
     ...state,
     trump: { suit, chosenBySeat: seat, revealed: false },
-    phase: 'playing',
-    trick: { leadSeat, cards: [], trickNumber: 1 },
-    log: cloneLog(state, `${playerName(state.players, seat)} picks trump (concealed) and play begins.`),
+    phase: 'doubling',
+    log: cloneLog(
+      state,
+      `${playerName(state.players, seat)} picks trump (concealed).`,
+      `${playerName(state.players, deciderSeat)} may double the stakes.`
+    ),
   };
+}
+
+// The defender to the bidder's left speaks for the defending team: yell
+// "Double!" to put 2 base cards on the line, or let the round play at 1.
+export function declareDouble(state: GameState, seat: Seat, wantsDouble: boolean): GameState {
+  if (state.phase !== 'doubling') throw new Error('Not in doubling phase');
+  const bidderSeat = state.bidding.currentBidderSeat as Seat;
+  if (seat !== nextSeat(bidderSeat)) throw new Error('Only the defender after the bidder declares the double');
+
+  if (!wantsDouble) {
+    return beginPlay(state, ['No double. Play begins.']);
+  }
+  return {
+    ...state,
+    stakeMultiplier: 2,
+    doubled: true,
+    phase: 'redoubling',
+    log: cloneLog(
+      state,
+      `${playerName(state.players, seat)} yells DOUBLE! 2 base cards on the line.`,
+      `${playerName(state.players, bidderSeat)} may answer with a redouble.`
+    ),
+  };
+}
+
+// The bidder answers a double: redouble to 4 base cards, or accept at 2.
+export function declareRedouble(state: GameState, seat: Seat, wantsRedouble: boolean): GameState {
+  if (state.phase !== 'redoubling') throw new Error('Not in redoubling phase');
+  const bidderSeat = state.bidding.currentBidderSeat as Seat;
+  if (seat !== bidderSeat) throw new Error('Only the bidder answers a double');
+
+  if (!wantsRedouble) {
+    return beginPlay(state, ['Double accepted. Play begins at 2 base cards.']);
+  }
+  return beginPlay(
+    { ...state, stakeMultiplier: 4, redoubled: true },
+    [`${playerName(state.players, seat)} answers REDOUBLE! 4 base cards on the line. Play begins.`]
+  );
 }
 
 export function requestTrumpReveal(state: GameState, seat: Seat): GameState {
@@ -327,50 +380,49 @@ function finishRound(state: GameState): GameState {
   const made = pointsCaptured[biddingTeam] >= bid;
   const kappu = tricksWonByTeam[biddingTeam] === 8;
 
-  // The base-card exchange: the losing team hands one of its base cards to
-  // the winners. Collecting every base card wins the match.
+  // The base-card exchange: the losing team hands base cards to the winners
+  // (1 normally, 2 doubled, 4 redoubled). Collecting every base card wins
+  // the match.
   const roundWinnerTeam: 0 | 1 = made ? biddingTeam : otherTeam;
   const roundLoserTeam: 0 | 1 = roundWinnerTeam === 0 ? 1 : 0;
-  const cardsTransferred = Math.min(1, state.baseCards[roundLoserTeam]);
+  const cardsTransferred = Math.min(state.stakeMultiplier, state.baseCards[roundLoserTeam]);
   const baseCards: [number, number] = [...state.baseCards];
   baseCards[roundLoserTeam] -= cardsTransferred;
   baseCards[roundWinnerTeam] += cardsTransferred;
 
-  // --- Kunukku bookkeeping ---
+  // --- Kunukku (ear-clip) bookkeeping ---
+  // Each seat wears 0-2 clips. Winning a made bid redeems the bidding
+  // team's clips (one per staked base card, so a redouble wipes the slate);
+  // failing to capture even the minimum bid's worth of points hangs a clip
+  // on the bidder (their partner takes it if both ears are full); defenders
+  // shut out without a single point are clipped too.
   const kunukku = [...state.kunukku] as [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel];
   const kunukkuMarked: Seat[] = [];
   const kunukkuCleared: Seat[] = [];
   const kunukkuDoubled: Seat[] = [];
+  const partnerOf = (s: Seat) => ((s + 2) % 4) as Seat;
+  const addClip = (s: Seat) => {
+    if (kunukku[s] >= 2) return;
+    kunukku[s] = (kunukku[s] + 1) as KunukkuLevel;
+    (kunukku[s] === 1 ? kunukkuMarked : kunukkuDoubled).push(s);
+  };
 
-  // Clearing/doubling only applies if the seat that won THIS bid is currently marked.
-  if (kunukku[bidderSeat] > 0) {
-    if (made) {
-      if (bid >= 20) {
-        const teammate = ((bidderSeat + 2) % 4) as Seat;
-        for (const s of [bidderSeat, teammate]) {
-          if (kunukku[s] > 0) {
-            kunukku[s] = 0;
-            kunukkuCleared.push(s);
-          }
-        }
-      } else {
-        kunukku[bidderSeat] = 0;
-        kunukkuCleared.push(bidderSeat);
+  if (made) {
+    let removable = state.stakeMultiplier;
+    for (const s of [bidderSeat, partnerOf(bidderSeat)]) {
+      while (removable > 0 && kunukku[s] > 0) {
+        kunukku[s] = (kunukku[s] - 1) as KunukkuLevel;
+        removable--;
+        if (!kunukkuCleared.includes(s)) kunukkuCleared.push(s);
       }
-    } else {
-      kunukku[bidderSeat] = 2;
-      kunukkuDoubled.push(bidderSeat);
     }
+  } else if (pointsCaptured[biddingTeam] < state.bidding.minBid) {
+    addClip(kunukku[bidderSeat] < 2 ? bidderSeat : partnerOf(bidderSeat));
   }
 
-  // Marking: the defending team is shamed with a kunukku if they failed to score a single point.
   if (pointsCaptured[otherTeam] === 0) {
-    const teamSeats = ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === otherTeam);
-    for (const s of teamSeats) {
-      if (kunukku[s] === 0) {
-        kunukku[s] = 1;
-        kunukkuMarked.push(s);
-      }
+    for (const s of ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === otherTeam)) {
+      addClip(s);
     }
   }
 
@@ -380,12 +432,12 @@ function finishRound(state: GameState): GameState {
       ? `Bidding team captured ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid made${kappu ? ' with a KAPPU (all 8 kai)!' : '.'}`
       : `Bidding team captured only ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid failed.`,
     cardsTransferred > 0
-      ? `Team ${roundLoserTeam === 0 ? 'A' : 'B'} hands over a base card. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
+      ? `Team ${roundLoserTeam === 0 ? 'A' : 'B'} hands over ${cardsTransferred} base card${cardsTransferred > 1 ? 's' : ''}${state.stakeMultiplier > 1 ? ` (${state.redoubled ? 'redoubled' : 'doubled'} stakes)` : ''}. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
       : `Team ${roundLoserTeam === 0 ? 'A' : 'B'} has no base cards left to hand over.`,
   ];
-  for (const s of kunukkuMarked) log.push(`${playerName(state.players, s)} is shut out and marked with a kunukku!`);
-  for (const s of kunukkuCleared) log.push(`${playerName(state.players, s)} clears their kunukku!`);
-  for (const s of kunukkuDoubled) log.push(`${playerName(state.players, s)} fails to clear their kunukku — it doubles!`);
+  for (const s of kunukkuMarked) log.push(`${playerName(state.players, s)} wears a kunukku clip!`);
+  for (const s of kunukkuCleared) log.push(`${playerName(state.players, s)} sheds a kunukku clip!`);
+  for (const s of kunukkuDoubled) log.push(`${playerName(state.players, s)} takes a second kunukku clip!`);
 
   let winner: 0 | 1 | null =
     baseCards[0] >= state.totalBaseCards ? 0 : baseCards[1] >= state.totalBaseCards ? 1 : null;
@@ -408,6 +460,9 @@ function finishRound(state: GameState): GameState {
     pointsCaptured,
     made,
     kappu,
+    doubled: state.doubled,
+    redoubled: state.redoubled,
+    stakeMultiplier: state.stakeMultiplier,
     roundWinnerTeam,
     cardsTransferred,
     baseCardsAfter: baseCards,
@@ -432,6 +487,8 @@ function finishRound(state: GameState): GameState {
 export function getCurrentActorSeat(state: Pick<GameState, 'phase' | 'bidding' | 'trick'>): Seat | null {
   if (state.phase === 'bidding') return state.bidding.turnSeat;
   if (state.phase === 'trump_selection') return state.bidding.currentBidderSeat;
+  if (state.phase === 'doubling') return nextSeat(state.bidding.currentBidderSeat as Seat);
+  if (state.phase === 'redoubling') return state.bidding.currentBidderSeat;
   if (state.phase === 'playing') {
     return state.trick.cards.length === 0
       ? (state.trick.leadSeat as Seat)
