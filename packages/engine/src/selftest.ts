@@ -117,15 +117,23 @@ function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
 
 function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
   const players = makePlayers();
-  let state = createGame(players, { targetScore: 6 });
+  let state = createGame(players, { baseCardsPerTeam: 6 });
   let rounds = 0;
   while (state.phase !== 'game_end') {
     rounds++;
-    if (rounds > 300) throw new Error('Game did not converge to a winner (possible kunukku deadlock)');
+    if (rounds > 2000) throw new Error('Game did not converge to a winner (possible base-card/kunukku deadlock)');
     state = playOneRound(state, difficulty);
     assertInvariants(state, rounds);
     for (const k of state.kunukku) {
       if (k !== 0 && k !== 1 && k !== 2) throw new Error(`Invalid kunukku level ${k}`);
+    }
+    if (state.baseCards[0] + state.baseCards[1] !== state.totalBaseCards) {
+      throw new Error(
+        `Base cards leaked: ${state.baseCards[0]} + ${state.baseCards[1]} != ${state.totalBaseCards}`
+      );
+    }
+    if (state.baseCards[0] < 0 || state.baseCards[1] < 0) {
+      throw new Error(`Negative base-card count: ${state.baseCards[0]}, ${state.baseCards[1]}`);
     }
     const lastResult = state.history[state.history.length - 1];
     kunukkuStats.marked += lastResult.kunukkuMarked.length;
@@ -136,9 +144,13 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
       state = startNextRound(state);
     }
   }
+  if (state.winner === null) throw new Error('game_end with no winner');
+  if (state.baseCards[state.winner] !== state.totalBaseCards) {
+    throw new Error(`Winner declared without holding all base cards: ${state.baseCards[state.winner]}`);
+  }
   const last = state.history[state.history.length - 1];
   console.log(
-    `Game ${gameIndex} [${difficulty}]: winner=Team ${state.winner} after ${rounds} rounds, final score ${state.scores[0]}-${state.scores[1]}, last round bid=${last.bid} made=${last.made}`
+    `Game ${gameIndex} [${difficulty}]: winner=Team ${state.winner} after ${rounds} rounds, base cards ${state.baseCards[0]}-${state.baseCards[1]}, last round bid=${last.bid} made=${last.made}`
   );
 }
 

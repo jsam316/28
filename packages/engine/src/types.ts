@@ -105,7 +105,9 @@ export interface RoundResult {
   pointsCaptured: [number, number];
   made: boolean;
   kappu: boolean; // bidding team won all 8 tricks
-  scoreDelta: [number, number];
+  roundWinnerTeam: 0 | 1; // biddingTeam if the bid was made, the defenders otherwise
+  cardsTransferred: number; // base cards handed from the losing team to the winning team
+  baseCardsAfter: [number, number]; // base-card tallies once the transfer is applied
   kunukkuMarked: Seat[]; // seats freshly marked with a kunukku this round (shut out as defenders)
   kunukkuCleared: Seat[]; // seats whose kunukku was cleared this round
   kunukkuDoubled: Seat[]; // seats whose kunukku was doubled this round (failed a clearance attempt)
@@ -127,8 +129,11 @@ export interface GameState {
   trump: TrumpState;
   trick: TrickState;
   completedTricks: CompletedTrick[];
-  scores: [number, number];
-  targetScore: number;
+  // Base cards are the match's physical score tokens: each team starts with
+  // half of totalBaseCards face down, hands one to the winners after every
+  // lost round, and the match is won by collecting all of them.
+  baseCards: [number, number];
+  totalBaseCards: number;
   roundNumber: number;
   history: RoundResult[];
   log: string[];
@@ -153,8 +158,8 @@ export interface PlayerView {
   };
   trick: TrickState;
   completedTricks: CompletedTrick[];
-  scores: [number, number];
-  targetScore: number;
+  baseCards: [number, number];
+  totalBaseCards: number;
   roundNumber: number;
   history: RoundResult[];
   log: string[];

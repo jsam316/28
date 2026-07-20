@@ -70,8 +70,8 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
       )}
 
       <Scoreboard
-        scores={view.scores}
-        targetScore={view.targetScore}
+        baseCards={view.baseCards}
+        totalBaseCards={view.totalBaseCards}
         roundNumber={view.roundNumber}
         trumpSuit={view.trump.suit}
         trumpConcealed={view.trump.concealedForYou}
@@ -160,7 +160,8 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
       {revealOverlay && view.phase === 'game_end' && view.winner !== null && (
         <GameEndOverlay
           winner={view.winner}
-          scores={view.scores}
+          baseCards={view.baseCards}
+          totalBaseCards={view.totalBaseCards}
           lastResult={lastResult}
           players={players}
           onRestart={actions.restart}

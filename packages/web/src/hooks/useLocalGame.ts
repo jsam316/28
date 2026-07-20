@@ -32,8 +32,8 @@ function buildPlayers(humanName: string): Player[] {
   }));
 }
 
-export function useLocalGame(humanName: string, targetScore: number, difficulty: BotDifficulty = 'regular') {
-  const [state, setState] = useState<GameState>(() => createGame(buildPlayers(humanName), { targetScore }));
+export function useLocalGame(humanName: string, baseCardsPerTeam: number, difficulty: BotDifficulty = 'regular') {
+  const [state, setState] = useState<GameState>(() => createGame(buildPlayers(humanName), { baseCardsPerTeam }));
   const botTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -120,9 +120,9 @@ export function useLocalGame(humanName: string, targetScore: number, difficulty:
   }, []);
 
   const restart = useCallback(() => {
-    setState(createGame(buildPlayers(humanName), { targetScore }));
+    setState(createGame(buildPlayers(humanName), { baseCardsPerTeam }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [humanName, targetScore]);
+  }, [humanName, baseCardsPerTeam]);
 
   return { state, view, humanSeat: HUMAN_SEAT, bid, pickTrump, callTrump, play, nextRound, restart };
 }

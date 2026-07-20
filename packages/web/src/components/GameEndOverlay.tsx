@@ -2,13 +2,14 @@ import type { Player, RoundResult } from '@twenty-eight/engine';
 
 interface GameEndOverlayProps {
   winner: 0 | 1;
-  scores: [number, number];
+  baseCards: [number, number];
+  totalBaseCards: number;
   lastResult?: RoundResult;
   players: Player[];
   onRestart?: () => void;
 }
 
-export function GameEndOverlay({ winner, scores, lastResult, players, onRestart }: GameEndOverlayProps) {
+export function GameEndOverlay({ winner, baseCards, totalBaseCards, lastResult, players, onRestart }: GameEndOverlayProps) {
   const teamName = (team: 0 | 1) =>
     team === 0
       ? players.filter((p) => p.seat % 2 === 0).map((p) => p.name).join(' & ')
@@ -39,7 +40,7 @@ export function GameEndOverlay({ winner, scores, lastResult, players, onRestart 
           </>
         )}
         <p>
-          Final score: Team A {scores[0]} — Team B {scores[1]}
+          They collected all {totalBaseCards} base cards (Team A {baseCards[0]} — Team B {baseCards[1]}).
         </p>
         {onRestart && (
           <button type="button" className="btn btn-primary" onClick={onRestart}>

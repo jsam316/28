@@ -31,8 +31,14 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
             : `Bid failed — needed ${result.bid}, captured only ${result.pointsCaptured[result.biddingTeam]}.`}
         </p>
         <p>
-          Score change: Team A {result.scoreDelta[0] > 0 ? `+${result.scoreDelta[0]}` : 0}, Team B{' '}
-          {result.scoreDelta[1] > 0 ? `+${result.scoreDelta[1]}` : 0}
+          {result.cardsTransferred > 0 ? (
+            <>
+              Team {result.roundWinnerTeam === 0 ? 'B' : 'A'} hands over a base card. Base cards: Team A{' '}
+              {result.baseCardsAfter[0]}, Team B {result.baseCardsAfter[1]}.
+            </>
+          ) : (
+            <>No base cards left to hand over.</>
+          )}
         </p>
         {result.kunukkuMarked.length > 0 && (
           <p className="result-failed">

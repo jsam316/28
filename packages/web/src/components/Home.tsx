@@ -2,13 +2,13 @@ import { useState } from 'react';
 import type { BotDifficulty } from '@twenty-eight/engine';
 
 interface HomeProps {
-  onPlaySolo: (name: string, targetScore: number, difficulty: BotDifficulty) => void;
+  onPlaySolo: (name: string, baseCardsPerTeam: number, difficulty: BotDifficulty) => void;
   onGoOnline: (name: string) => void;
 }
 
 export function Home({ onPlaySolo, onGoOnline }: HomeProps) {
   const [name, setName] = useState('');
-  const [targetScore, setTargetScore] = useState(6);
+  const [baseCards, setBaseCards] = useState(6);
   const [difficulty, setDifficulty] = useState<BotDifficulty>('regular');
 
   return (
@@ -30,11 +30,11 @@ export function Home({ onPlaySolo, onGoOnline }: HomeProps) {
       <div className="home-section">
         <h2>Single player</h2>
         <label className="field">
-          Play to
-          <select value={targetScore} onChange={(e) => setTargetScore(Number(e.target.value))}>
-            <option value={6}>6 points</option>
-            <option value={12}>12 points</option>
-            <option value={21}>21 points</option>
+          Base cards per team
+          <select value={baseCards} onChange={(e) => setBaseCards(Number(e.target.value))}>
+            <option value={3}>3 — quick match (collect 6)</option>
+            <option value={6}>6 — classic (collect 12)</option>
+            <option value={9}>9 — marathon (collect 18)</option>
           </select>
         </label>
         <label className="field">
@@ -48,7 +48,7 @@ export function Home({ onPlaySolo, onGoOnline }: HomeProps) {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => onPlaySolo(name || 'You', targetScore, difficulty)}
+          onClick={() => onPlaySolo(name || 'You', baseCards, difficulty)}
         >
           Play vs Bots
         </button>

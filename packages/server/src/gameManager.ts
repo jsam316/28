@@ -68,7 +68,7 @@ export function handleDisconnect(io: Server, room: Room, socketId: string) {
   touch(room);
 }
 
-export function startGame(io: Server, room: Room, targetScore: number) {
+export function startGame(io: Server, room: Room, baseCardsPerTeam: number) {
   const players: Player[] = [0, 1, 2, 3].map((seat) => {
     const slot = room.slots[seat as Seat];
     if (slot) return { id: slot.socketId ?? `seat-${seat}`, name: slot.name, seat: seat as Seat, isBot: false, connected: true };
@@ -82,7 +82,7 @@ export function startGame(io: Server, room: Room, targetScore: number) {
     return { id: `bot-${seat}`, name: BOT_NAMES[seat], seat: seat as Seat, isBot: true, connected: true };
   });
 
-  room.state = createGame(players, { targetScore });
+  room.state = createGame(players, { baseCardsPerTeam });
   touch(room);
   broadcastRoom(io, room);
   scheduleBots(io, room);

@@ -78,8 +78,8 @@ export function useOnlineGame(name: string, roomCode: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, name]);
 
-  const startGame = useCallback((targetScore: number) => {
-    socketRef.current.emit('room:start', { targetScore });
+  const startGame = useCallback((baseCards: number) => {
+    socketRef.current.emit('room:start', { baseCards });
   }, []);
 
   const bid = useCallback((value: 'pass' | number) => {

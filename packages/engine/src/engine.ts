@@ -1,5 +1,5 @@
 import { buildDeck, shuffle } from './deck.js';
-import { bidStakes, legalCardsFor, minNextBid, resolveTrick } from './rules.js';
+import { legalCardsFor, minNextBid, resolveTrick } from './rules.js';
 import {
   type BiddingState,
   type Card,
@@ -16,18 +16,19 @@ import {
 } from './types.js';
 
 export interface GameOptions {
-  targetScore?: number;
+  baseCardsPerTeam?: number;
   minBid?: number;
   maxBid?: number;
   rng?: () => number;
 }
 
-const DEFAULTS = { targetScore: 6, minBid: 14, maxBid: 28 };
+const DEFAULTS = { baseCardsPerTeam: 6, minBid: 14, maxBid: 28 };
 
 function dealRound(
   players: Player[],
   dealerSeat: Seat,
-  scores: [number, number],
+  baseCards: [number, number],
+  totalBaseCards: number,
   roundNumber: number,
   opts: Required<GameOptions>,
   history: RoundResult[],
@@ -81,8 +82,8 @@ function dealRound(
     trump: { suit: null, chosenBySeat: null, revealed: false },
     trick: { leadSeat: null, cards: [], trickNumber: 1 },
     completedTricks: [],
-    scores,
-    targetScore: opts.targetScore,
+    baseCards,
+    totalBaseCards,
     roundNumber,
     history,
     log: [`Round ${roundNumber}: cards dealt. ${playerName(players, openingBidder)} opens the bidding.`],
@@ -97,17 +98,26 @@ function playerName(players: Player[], seat: Seat): string {
 
 export function createGame(players: Player[], options: GameOptions = {}): GameState {
   const opts: Required<GameOptions> = {
-    targetScore: options.targetScore ?? DEFAULTS.targetScore,
+    baseCardsPerTeam: options.baseCardsPerTeam ?? DEFAULTS.baseCardsPerTeam,
     minBid: options.minBid ?? DEFAULTS.minBid,
     maxBid: options.maxBid ?? DEFAULTS.maxBid,
     rng: options.rng ?? Math.random,
   };
-  return dealRound(players, 0, [0, 0], 1, opts, [], [0, 0, 0, 0]);
+  return dealRound(
+    players,
+    0,
+    [opts.baseCardsPerTeam, opts.baseCardsPerTeam],
+    opts.baseCardsPerTeam * 2,
+    1,
+    opts,
+    [],
+    [0, 0, 0, 0]
+  );
 }
 
 export function startNextRound(state: GameState, options: GameOptions = {}): GameState {
   const opts: Required<GameOptions> = {
-    targetScore: state.targetScore,
+    baseCardsPerTeam: state.totalBaseCards / 2,
     minBid: state.bidding.minBid,
     maxBid: state.bidding.maxBid,
     rng: options.rng ?? Math.random,
@@ -116,7 +126,8 @@ export function startNextRound(state: GameState, options: GameOptions = {}): Gam
   return dealRound(
     state.players,
     dealerSeat,
-    state.scores,
+    state.baseCards,
+    state.totalBaseCards,
     state.roundNumber + 1,
     opts,
     state.history,
@@ -316,18 +327,14 @@ function finishRound(state: GameState): GameState {
   const made = pointsCaptured[biddingTeam] >= bid;
   const kappu = tricksWonByTeam[biddingTeam] === 8;
 
-  const stakes = bidStakes(bid);
-  const scoreDelta: [number, number] = [0, 0];
-  if (made) {
-    scoreDelta[biddingTeam] = kappu ? stakes.win * 2 : stakes.win;
-  } else {
-    scoreDelta[otherTeam] = stakes.failPenalty;
-  }
-
-  const scores: [number, number] = [
-    state.scores[0] + scoreDelta[0],
-    state.scores[1] + scoreDelta[1],
-  ];
+  // The base-card exchange: the losing team hands one of its base cards to
+  // the winners. Collecting every base card wins the match.
+  const roundWinnerTeam: 0 | 1 = made ? biddingTeam : otherTeam;
+  const roundLoserTeam: 0 | 1 = roundWinnerTeam === 0 ? 1 : 0;
+  const cardsTransferred = Math.min(1, state.baseCards[roundLoserTeam]);
+  const baseCards: [number, number] = [...state.baseCards];
+  baseCards[roundLoserTeam] -= cardsTransferred;
+  baseCards[roundWinnerTeam] += cardsTransferred;
 
   // --- Kunukku bookkeeping ---
   const kunukku = [...state.kunukku] as [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel];
@@ -372,20 +379,23 @@ function finishRound(state: GameState): GameState {
     made
       ? `Bidding team captured ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid made${kappu ? ' with a KAPPU (all 8 kai)!' : '.'}`
       : `Bidding team captured only ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid failed.`,
-    `Score: Team A ${scores[0]} - Team B ${scores[1]}`,
+    cardsTransferred > 0
+      ? `Team ${roundLoserTeam === 0 ? 'A' : 'B'} hands over a base card. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
+      : `Team ${roundLoserTeam === 0 ? 'A' : 'B'} has no base cards left to hand over.`,
   ];
   for (const s of kunukkuMarked) log.push(`${playerName(state.players, s)} is shut out and marked with a kunukku!`);
   for (const s of kunukkuCleared) log.push(`${playerName(state.players, s)} clears their kunukku!`);
   for (const s of kunukkuDoubled) log.push(`${playerName(state.players, s)} fails to clear their kunukku — it doubles!`);
 
-  let winner: 0 | 1 | null = scores[0] >= state.targetScore ? 0 : scores[1] >= state.targetScore ? 1 : null;
+  let winner: 0 | 1 | null =
+    baseCards[0] >= state.totalBaseCards ? 0 : baseCards[1] >= state.totalBaseCards ? 1 : null;
   let kunukkuBlockedWinner: 0 | 1 | null = null;
   if (winner !== null) {
     const winningSeats = ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === winner);
     if (winningSeats.some((s) => kunukku[s] > 0)) {
       kunukkuBlockedWinner = winner;
       log.push(
-        `Team ${winner === 0 ? 'A' : 'B'} reached the target score but must clear their kunukku before winning!`
+        `Team ${winner === 0 ? 'A' : 'B'} holds all ${state.totalBaseCards} base cards but must clear their kunukku before winning!`
       );
       winner = null;
     }
@@ -398,7 +408,9 @@ function finishRound(state: GameState): GameState {
     pointsCaptured,
     made,
     kappu,
-    scoreDelta,
+    roundWinnerTeam,
+    cardsTransferred,
+    baseCardsAfter: baseCards,
     kunukkuMarked,
     kunukkuCleared,
     kunukkuDoubled,
@@ -408,7 +420,7 @@ function finishRound(state: GameState): GameState {
   return {
     ...state,
     phase: winner !== null ? 'game_end' : 'round_end',
-    scores,
+    baseCards,
     history: [...state.history, result],
     log,
     winner,

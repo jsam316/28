@@ -435,6 +435,17 @@ h3 {
   color: #2b2000;
 }
 
+.base-chip {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.8rem;
+  margin-right: 0.25rem;
+  border-radius: 2px;
+  vertical-align: -0.1em;
+  background: repeating-linear-gradient(45deg, #7a1f2b 0 2px, #5c1620 2px 4px);
+  border: 1px solid var(--gold);
+}
+
 .badge-kunukku {
   background: #7a1f2b;
   color: #ffd9dc;

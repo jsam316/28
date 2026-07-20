@@ -75,11 +75,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('room:start', ({ targetScore }: { targetScore?: number }) => {
+  socket.on('room:start', ({ baseCards }: { baseCards?: number }) => {
     if (!data.roomCode) return;
     const room = getOrCreateRoom(data.roomCode);
     try {
-      startGame(io, room, targetScore ?? 6);
+      startGame(io, room, baseCards ?? 6);
     } catch (err) {
       socket.emit('room:error', { message: (err as Error).message });
     }
