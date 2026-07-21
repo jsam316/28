@@ -24,6 +24,14 @@ export function minNextBid(currentBid: number | null, minBid: number, secondBatc
   return secondBatchDealt ? Math.max(next, SECOND_ROUND_MIN_BID) : next;
 }
 
+// A bid's tier sets the automatic base stake in base cards, before any table
+// double/redouble: 20-23 doubles it, 24+ quadruples it.
+export function bidTierStake(bid: number): 1 | 2 | 4 {
+  if (bid >= 24) return 4;
+  if (bid >= 20) return 2;
+  return 1;
+}
+
 export function resolveTrick(cards: PlayedCard[], trumpSuit: Suit | null, trickNumber: number): CompletedTrick {
   const ledSuit = cards[0].card.suit;
   const trumpPlays = trumpSuit ? cards.filter((pc) => pc.card.suit === trumpSuit) : [];

@@ -1,5 +1,5 @@
 import { buildDeck, shuffle } from './deck.js';
-import { legalCardsFor, minNextBid, resolveTrick } from './rules.js';
+import { bidTierStake, legalCardsFor, minNextBid, resolveTrick } from './rules.js';
 import {
   type BiddingState,
   type Card,
@@ -23,10 +23,6 @@ export interface GameOptions {
 }
 
 const DEFAULTS = { baseCardsPerTeam: 6, minBid: 14, maxBid: 28 };
-
-// Bids of 20 or more put 2 base cards on the line instead of 1 (before any
-// double/redouble multiplier).
-export const HIGH_BID_THRESHOLD = 20;
 
 function dealRound(
   players: Player[],
@@ -385,12 +381,12 @@ function finishRound(state: GameState): GameState {
   const kappu = tricksWonByTeam[biddingTeam] === 8;
 
   // The base-card exchange: the losing team hands base cards to the winners.
-  // High bids (20+) stake 2 cards, and a double/redouble multiplies that
-  // again - so a redoubled 20+ bid can swing 8 cards in one round.
+  // The bid tier auto-scales the stake (20-23 doubles it, 24+ quadruples it),
+  // and a table double/redouble multiplies that again.
   const roundWinnerTeam: 0 | 1 = made ? biddingTeam : otherTeam;
   const roundLoserTeam: 0 | 1 = roundWinnerTeam === 0 ? 1 : 0;
   const loserEnteredAtZero = state.baseCards[roundLoserTeam] === 0;
-  const effectiveStake = (bid >= HIGH_BID_THRESHOLD ? 2 : 1) * state.stakeMultiplier;
+  const effectiveStake = bidTierStake(bid) * state.stakeMultiplier;
   const cardsTransferred = Math.min(effectiveStake, state.baseCards[roundLoserTeam]);
   const baseCards: [number, number] = [...state.baseCards];
   baseCards[roundLoserTeam] -= cardsTransferred;
@@ -414,8 +410,8 @@ function finishRound(state: GameState): GameState {
   };
 
   if (made) {
-    // One clip shed per staked base card, so a made 20+ bid frees both
-    // partners and a redoubled win wipes the slate clean.
+    // One clip shed per staked base card, so a made high bid (which stakes
+    // 2 or 4) frees both partners and a redoubled win wipes the slate clean.
     let removable = effectiveStake;
     for (const s of [bidderSeat, partnerOf(bidderSeat)]) {
       while (removable > 0 && kunukku[s] > 0) {
@@ -448,7 +444,7 @@ function finishRound(state: GameState): GameState {
       ? `Bidding team captured ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid made${kappu ? ' with a KAPPU (all 8 kai)!' : '.'}`
       : `Bidding team captured only ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid failed.`,
     cardsTransferred > 0
-      ? `Team ${roundLoserTeam === 0 ? 'A' : 'B'} hands over ${cardsTransferred} base card${cardsTransferred > 1 ? 's' : ''}${effectiveStake > 1 ? ` (stakes: ${bid >= HIGH_BID_THRESHOLD ? 'high bid' : 'standard'}${state.doubled ? state.redoubled ? ', redoubled' : ', doubled' : ''})` : ''}. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
+      ? `Team ${roundLoserTeam === 0 ? 'A' : 'B'} hands over ${cardsTransferred} base card${cardsTransferred > 1 ? 's' : ''}${effectiveStake > 1 ? ` (stakes: ${bid >= 24 ? '24+ quadruple' : bid >= 20 ? '20+ double' : 'standard'}${state.doubled ? state.redoubled ? ', redoubled' : ', doubled' : ''})` : ''}. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
       : `Team ${roundLoserTeam === 0 ? 'A' : 'B'} has no base cards left to hand over.`,
   ];
   for (const s of kunukkuMarked) log.push(`${playerName(state.players, s)} wears a kunukku clip!`);

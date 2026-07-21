@@ -32,7 +32,8 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
         </p>
         {(result.stakeMultiplier > 1 || result.bid >= 20) && (
           <p className="result-failed">
-            Raised stakes this round:{result.bid >= 20 ? ' high bid (20+) ×2' : ''}
+            Raised stakes this round:
+            {result.bid >= 24 ? ' 24+ bid ×4' : result.bid >= 20 ? ' 20+ bid ×2' : ''}
             {result.doubled ? (result.redoubled ? ' · REDOUBLED ×4' : ' · DOUBLED ×2') : ''}
           </p>
         )}

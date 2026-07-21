@@ -4,6 +4,7 @@ import {
   type Player,
   type Seat,
   TOTAL_POINTS,
+  bidTierStake,
   chooseTrump,
   createGame,
   decideBotAction,
@@ -165,10 +166,15 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     if (![1, 2, 4].includes(lastResult.stakeMultiplier)) {
       throw new Error(`Invalid stake multiplier ${lastResult.stakeMultiplier}`);
     }
-    const maxStake = (lastResult.bid >= 20 ? 2 : 1) * lastResult.stakeMultiplier;
-    if (lastResult.cardsTransferred > maxStake) {
+    const fullStake = bidTierStake(lastResult.bid) * lastResult.stakeMultiplier;
+    // The loser hands over the full staked amount, capped only by however many
+    // base cards they had before the round.
+    const loserTeam = lastResult.roundWinnerTeam === 0 ? 1 : 0;
+    const loserBefore = lastResult.baseCardsAfter[loserTeam] + lastResult.cardsTransferred;
+    const expectedTransfer = Math.min(fullStake, loserBefore);
+    if (lastResult.cardsTransferred !== expectedTransfer) {
       throw new Error(
-        `Transferred ${lastResult.cardsTransferred} cards with a max stake of ${maxStake} (bid ${lastResult.bid}, multiplier ${lastResult.stakeMultiplier})`
+        `Transferred ${lastResult.cardsTransferred} cards, expected ${expectedTransfer} (bid ${lastResult.bid}, tier×mult ${fullStake}, loser had ${loserBefore})`
       );
     }
     if (lastResult.redoubled && !lastResult.doubled) {
