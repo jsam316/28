@@ -20,6 +20,9 @@ import { type Room, touch } from './rooms.js';
 
 const BOT_NAMES = ['Anitha', 'Rajan', 'Deepa', 'Vinu'];
 const BOT_DELAY_MS = 900;
+// A bot leading a fresh kai waits for the clients' previous-kai rest+sweep
+// animation to finish (see TRICK_ANIM_TOTAL_MS in the web TrickArea).
+const BOT_LEAD_DELAY_MS = 1450;
 
 export function broadcastRoom(io: Server, room: Room) {
   const seats = room.slots.map((slot, seat) =>
@@ -143,6 +146,10 @@ export function scheduleBots(io: Server, room: Room) {
   const slot = room.slots[actor];
   if (!slot?.isBot) return;
 
+  const leadingFreshKai =
+    room.state.phase === 'playing' && room.state.trick.cards.length === 0 && room.state.completedTricks.length > 0;
+  const delay = leadingFreshKai ? BOT_LEAD_DELAY_MS : BOT_DELAY_MS;
+
   room.botTimer = setTimeout(() => {
     if (!room.state) return;
     const seat = getCurrentActorSeat(room.state);
@@ -164,5 +171,5 @@ export function scheduleBots(io: Server, room: Room) {
     touch(room);
     broadcastRoom(io, room);
     scheduleBots(io, room);
-  }, BOT_DELAY_MS);
+  }, delay);
 }

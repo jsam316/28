@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getCurrentActorSeat, nextSeat, type Card, type PlayerView, type Seat, type Suit } from '@twenty-eight/engine';
 import { PlayerSeat, seatPosition } from './PlayerSeat';
-import { TrickArea } from './TrickArea';
+import { TrickArea, TRICK_ANIM_TOTAL_MS } from './TrickArea';
 import { Hand } from './Hand';
 import { PlayingCard } from './Card';
 import { BiddingPanel } from './BiddingPanel';
@@ -31,7 +31,9 @@ interface GameScreenProps {
   exitLabel?: string;
 }
 
-const ROUND_END_REVEAL_DELAY_MS = 750;
+// Hold the table long enough for the final kai to rest and sweep before the
+// round-end overlay appears (plus a small beat to read the winner).
+const ROUND_END_REVEAL_DELAY_MS = TRICK_ANIM_TOTAL_MS + 250;
 
 export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitLabel = 'Home' }: GameScreenProps) {
   const { you, players } = view;
