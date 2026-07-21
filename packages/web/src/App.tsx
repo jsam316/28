@@ -8,23 +8,33 @@ import { useLocalGame } from './hooks/useLocalGame';
 
 type Screen =
   | { kind: 'home' }
-  | { kind: 'local'; name: string; targetScore: number; difficulty: BotDifficulty }
+  | { kind: 'local'; name: string; baseCardsPerTeam: number; difficulty: BotDifficulty }
   | { kind: 'online-lobby'; name: string }
   | { kind: 'online-game'; name: string; roomCode: string };
 
 function LocalGame({
   name,
-  targetScore,
+  baseCardsPerTeam,
   difficulty,
   onExit,
 }: {
   name: string;
-  targetScore: number;
+  baseCardsPerTeam: number;
   difficulty: BotDifficulty;
   onExit: () => void;
 }) {
-  const { view, bid, pickTrump, callTrump, play, nextRound, restart } = useLocalGame(name, targetScore, difficulty);
-  return <GameScreen view={view} actions={{ bid, pickTrump, callTrump, play, nextRound, restart }} onExit={onExit} />;
+  const { view, bid, pickTrump, callTrump, play, double, redouble, nextRound, restart } = useLocalGame(
+    name,
+    baseCardsPerTeam,
+    difficulty
+  );
+  return (
+    <GameScreen
+      view={view}
+      actions={{ bid, pickTrump, callTrump, play, double, redouble, nextRound, restart }}
+      onExit={onExit}
+    />
+  );
 }
 
 export default function App() {
@@ -33,7 +43,7 @@ export default function App() {
   if (screen.kind === 'home') {
     return (
       <Home
-        onPlaySolo={(name, targetScore, difficulty) => setScreen({ kind: 'local', name, targetScore, difficulty })}
+        onPlaySolo={(name, baseCardsPerTeam, difficulty) => setScreen({ kind: 'local', name, baseCardsPerTeam, difficulty })}
         onGoOnline={(name) => setScreen({ kind: 'online-lobby', name })}
       />
     );
@@ -43,7 +53,7 @@ export default function App() {
     return (
       <LocalGame
         name={screen.name}
-        targetScore={screen.targetScore}
+        baseCardsPerTeam={screen.baseCardsPerTeam}
         difficulty={screen.difficulty}
         onExit={() => setScreen({ kind: 'home' })}
       />

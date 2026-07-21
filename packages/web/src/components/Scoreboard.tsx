@@ -1,8 +1,9 @@
 import type { RoundResult } from '@twenty-eight/engine';
 
 interface ScoreboardProps {
-  scores: [number, number];
-  targetScore: number;
+  baseCards: [number, number];
+  totalBaseCards: number;
+  stakeMultiplier: number;
   roundNumber: number;
   trumpSuit: string | null;
   trumpConcealed: boolean;
@@ -11,7 +12,15 @@ interface ScoreboardProps {
 
 const SUIT_SYMBOL: Record<string, string> = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
-export function Scoreboard({ scores, targetScore, roundNumber, trumpSuit, trumpConcealed, history }: ScoreboardProps) {
+export function Scoreboard({
+  baseCards,
+  totalBaseCards,
+  stakeMultiplier,
+  roundNumber,
+  trumpSuit,
+  trumpConcealed,
+  history,
+}: ScoreboardProps) {
   const totalPoints = history.reduce<[number, number]>(
     (acc, r) => [acc[0] + r.pointsCaptured[0], acc[1] + r.pointsCaptured[1]],
     [0, 0]
@@ -20,11 +29,13 @@ export function Scoreboard({ scores, targetScore, roundNumber, trumpSuit, trumpC
   return (
     <div className="scoreboard">
       <div className="score-team score-a">
-        Team A: {scores[0]}
+        Team A: <span className="base-chip" aria-hidden="true" />
+        {baseCards[0]}
         <span className="score-points"> · {totalPoints[0]} pts</span>
       </div>
       <div className="score-round">
-        Round {roundNumber} · first to {targetScore}
+        Round {roundNumber} · collect all {totalBaseCards}
+        {stakeMultiplier > 1 && <span className="stake-flag"> · stakes ×{stakeMultiplier}</span>}
       </div>
       <div className="trump-indicator">
         Trump:{' '}
@@ -37,7 +48,8 @@ export function Scoreboard({ scores, targetScore, roundNumber, trumpSuit, trumpC
         )}
       </div>
       <div className="score-team score-b">
-        Team B: {scores[1]}
+        Team B: <span className="base-chip" aria-hidden="true" />
+        {baseCards[1]}
         <span className="score-points"> · {totalPoints[1]} pts</span>
       </div>
     </div>

@@ -9,11 +9,9 @@ interface OnlineGameProps {
 }
 
 export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
-  const { status, error, seat, room, view, startGame, bid, pickTrump, callTrump, play, nextRound } = useOnlineGame(
-    name,
-    roomCode
-  );
-  const [targetScore, setTargetScore] = useState(6);
+  const { status, error, seat, room, view, startGame, bid, pickTrump, callTrump, play, double, redouble, nextRound } =
+    useOnlineGame(name, roomCode);
+  const [baseCards, setBaseCards] = useState(6);
 
   if (status === 'error') {
     return (
@@ -54,14 +52,14 @@ export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
         {isHost ? (
           <div className="home-section">
             <label className="field">
-              Play to
-              <select value={targetScore} onChange={(e) => setTargetScore(Number(e.target.value))}>
-                <option value={6}>6 points</option>
-                <option value={12}>12 points</option>
-                <option value={21}>21 points</option>
+              Base cards per team
+              <select value={baseCards} onChange={(e) => setBaseCards(Number(e.target.value))}>
+                <option value={3}>3 — quick match (collect 6)</option>
+                <option value={6}>6 — classic (collect 12)</option>
+                <option value={9}>9 — marathon (collect 18)</option>
               </select>
             </label>
-            <button type="button" className="btn btn-primary" onClick={() => startGame(targetScore)}>
+            <button type="button" className="btn btn-primary" onClick={() => startGame(baseCards)}>
               Start game
             </button>
           </div>
@@ -87,7 +85,7 @@ export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
   return (
     <GameScreen
       view={view}
-      actions={{ bid, pickTrump, callTrump, play, nextRound }}
+      actions={{ bid, pickTrump, callTrump, play, double, redouble, nextRound }}
       waitingForHostMessage="Waiting for a player to start the next round..."
       onExit={onExit}
       exitLabel="Leave room"

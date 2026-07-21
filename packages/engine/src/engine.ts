@@ -1,5 +1,5 @@
 import { buildDeck, shuffle } from './deck.js';
-import { bidStakes, legalCardsFor, minNextBid, resolveTrick } from './rules.js';
+import { legalCardsFor, minNextBid, resolveTrick } from './rules.js';
 import {
   type BiddingState,
   type Card,
@@ -16,18 +16,23 @@ import {
 } from './types.js';
 
 export interface GameOptions {
-  targetScore?: number;
+  baseCardsPerTeam?: number;
   minBid?: number;
   maxBid?: number;
   rng?: () => number;
 }
 
-const DEFAULTS = { targetScore: 6, minBid: 14, maxBid: 28 };
+const DEFAULTS = { baseCardsPerTeam: 6, minBid: 14, maxBid: 28 };
+
+// Bids of 20 or more put 2 base cards on the line instead of 1 (before any
+// double/redouble multiplier).
+export const HIGH_BID_THRESHOLD = 20;
 
 function dealRound(
   players: Player[],
   dealerSeat: Seat,
-  scores: [number, number],
+  baseCards: [number, number],
+  totalBaseCards: number,
   roundNumber: number,
   opts: Required<GameOptions>,
   history: RoundResult[],
@@ -81,8 +86,11 @@ function dealRound(
     trump: { suit: null, chosenBySeat: null, revealed: false },
     trick: { leadSeat: null, cards: [], trickNumber: 1 },
     completedTricks: [],
-    scores,
-    targetScore: opts.targetScore,
+    baseCards,
+    totalBaseCards,
+    stakeMultiplier: 1,
+    doubled: false,
+    redoubled: false,
     roundNumber,
     history,
     log: [`Round ${roundNumber}: cards dealt. ${playerName(players, openingBidder)} opens the bidding.`],
@@ -97,17 +105,26 @@ function playerName(players: Player[], seat: Seat): string {
 
 export function createGame(players: Player[], options: GameOptions = {}): GameState {
   const opts: Required<GameOptions> = {
-    targetScore: options.targetScore ?? DEFAULTS.targetScore,
+    baseCardsPerTeam: options.baseCardsPerTeam ?? DEFAULTS.baseCardsPerTeam,
     minBid: options.minBid ?? DEFAULTS.minBid,
     maxBid: options.maxBid ?? DEFAULTS.maxBid,
     rng: options.rng ?? Math.random,
   };
-  return dealRound(players, 0, [0, 0], 1, opts, [], [0, 0, 0, 0]);
+  return dealRound(
+    players,
+    0,
+    [opts.baseCardsPerTeam, opts.baseCardsPerTeam],
+    opts.baseCardsPerTeam * 2,
+    1,
+    opts,
+    [],
+    [0, 0, 0, 0]
+  );
 }
 
 export function startNextRound(state: GameState, options: GameOptions = {}): GameState {
   const opts: Required<GameOptions> = {
-    targetScore: state.targetScore,
+    baseCardsPerTeam: state.totalBaseCards / 2,
     minBid: state.bidding.minBid,
     maxBid: state.bidding.maxBid,
     rng: options.rng ?? Math.random,
@@ -116,7 +133,8 @@ export function startNextRound(state: GameState, options: GameOptions = {}): Gam
   return dealRound(
     state.players,
     dealerSeat,
-    state.scores,
+    state.baseCards,
+    state.totalBaseCards,
     state.roundNumber + 1,
     opts,
     state.history,
@@ -225,19 +243,69 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
   };
 }
 
+function beginPlay(state: GameState, log: string[]): GameState {
+  const leadSeat = nextSeat(state.dealerSeat);
+  return {
+    ...state,
+    phase: 'playing',
+    trick: { leadSeat, cards: [], trickNumber: 1 },
+    log: cloneLog(state, ...log),
+  };
+}
+
 export function chooseTrump(state: GameState, seat: Seat, suit: Suit): GameState {
   if (state.phase !== 'trump_selection') throw new Error('Not in trump selection phase');
   if (state.bidding.currentBidderSeat !== seat) throw new Error('Only the bid winner chooses trump');
 
-  const leadSeat = nextSeat(state.dealerSeat);
-
+  const deciderSeat = nextSeat(seat);
   return {
     ...state,
     trump: { suit, chosenBySeat: seat, revealed: false },
-    phase: 'playing',
-    trick: { leadSeat, cards: [], trickNumber: 1 },
-    log: cloneLog(state, `${playerName(state.players, seat)} picks trump (concealed) and play begins.`),
+    phase: 'doubling',
+    log: cloneLog(
+      state,
+      `${playerName(state.players, seat)} picks trump (concealed).`,
+      `${playerName(state.players, deciderSeat)} may double the stakes.`
+    ),
   };
+}
+
+// The defender to the bidder's left speaks for the defending team: yell
+// "Double!" to put 2 base cards on the line, or let the round play at 1.
+export function declareDouble(state: GameState, seat: Seat, wantsDouble: boolean): GameState {
+  if (state.phase !== 'doubling') throw new Error('Not in doubling phase');
+  const bidderSeat = state.bidding.currentBidderSeat as Seat;
+  if (seat !== nextSeat(bidderSeat)) throw new Error('Only the defender after the bidder declares the double');
+
+  if (!wantsDouble) {
+    return beginPlay(state, ['No double. Play begins.']);
+  }
+  return {
+    ...state,
+    stakeMultiplier: 2,
+    doubled: true,
+    phase: 'redoubling',
+    log: cloneLog(
+      state,
+      `${playerName(state.players, seat)} yells DOUBLE! 2 base cards on the line.`,
+      `${playerName(state.players, bidderSeat)} may answer with a redouble.`
+    ),
+  };
+}
+
+// The bidder answers a double: redouble to 4 base cards, or accept at 2.
+export function declareRedouble(state: GameState, seat: Seat, wantsRedouble: boolean): GameState {
+  if (state.phase !== 'redoubling') throw new Error('Not in redoubling phase');
+  const bidderSeat = state.bidding.currentBidderSeat as Seat;
+  if (seat !== bidderSeat) throw new Error('Only the bidder answers a double');
+
+  if (!wantsRedouble) {
+    return beginPlay(state, ['Double accepted. Play begins at 2 base cards.']);
+  }
+  return beginPlay(
+    { ...state, stakeMultiplier: 4, redoubled: true },
+    [`${playerName(state.players, seat)} answers REDOUBLE! 4 base cards on the line. Play begins.`]
+  );
 }
 
 export function requestTrumpReveal(state: GameState, seat: Seat): GameState {
@@ -316,54 +384,61 @@ function finishRound(state: GameState): GameState {
   const made = pointsCaptured[biddingTeam] >= bid;
   const kappu = tricksWonByTeam[biddingTeam] === 8;
 
-  const stakes = bidStakes(bid);
-  const scoreDelta: [number, number] = [0, 0];
-  if (made) {
-    scoreDelta[biddingTeam] = kappu ? stakes.win * 2 : stakes.win;
-  } else {
-    scoreDelta[otherTeam] = stakes.failPenalty;
-  }
+  // The base-card exchange: the losing team hands base cards to the winners.
+  // High bids (20+) stake 2 cards, and a double/redouble multiplies that
+  // again - so a redoubled 20+ bid can swing 8 cards in one round.
+  const roundWinnerTeam: 0 | 1 = made ? biddingTeam : otherTeam;
+  const roundLoserTeam: 0 | 1 = roundWinnerTeam === 0 ? 1 : 0;
+  const loserEnteredAtZero = state.baseCards[roundLoserTeam] === 0;
+  const effectiveStake = (bid >= HIGH_BID_THRESHOLD ? 2 : 1) * state.stakeMultiplier;
+  const cardsTransferred = Math.min(effectiveStake, state.baseCards[roundLoserTeam]);
+  const baseCards: [number, number] = [...state.baseCards];
+  baseCards[roundLoserTeam] -= cardsTransferred;
+  baseCards[roundWinnerTeam] += cardsTransferred;
 
-  const scores: [number, number] = [
-    state.scores[0] + scoreDelta[0],
-    state.scores[1] + scoreDelta[1],
-  ];
-
-  // --- Kunukku bookkeeping ---
+  // --- Kunukku (ear-clip) bookkeeping ---
+  // Each seat wears 0-2 clips. Winning a made bid redeems the bidding
+  // team's clips (one per staked base card, so a redouble wipes the slate);
+  // failing to capture even the minimum bid's worth of points hangs a clip
+  // on the bidder (their partner takes it if both ears are full); defenders
+  // shut out without a single point are clipped too.
   const kunukku = [...state.kunukku] as [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel];
   const kunukkuMarked: Seat[] = [];
   const kunukkuCleared: Seat[] = [];
   const kunukkuDoubled: Seat[] = [];
+  const partnerOf = (s: Seat) => ((s + 2) % 4) as Seat;
+  const addClip = (s: Seat) => {
+    if (kunukku[s] >= 2) return;
+    kunukku[s] = (kunukku[s] + 1) as KunukkuLevel;
+    (kunukku[s] === 1 ? kunukkuMarked : kunukkuDoubled).push(s);
+  };
 
-  // Clearing/doubling only applies if the seat that won THIS bid is currently marked.
-  if (kunukku[bidderSeat] > 0) {
-    if (made) {
-      if (bid >= 20) {
-        const teammate = ((bidderSeat + 2) % 4) as Seat;
-        for (const s of [bidderSeat, teammate]) {
-          if (kunukku[s] > 0) {
-            kunukku[s] = 0;
-            kunukkuCleared.push(s);
-          }
-        }
-      } else {
-        kunukku[bidderSeat] = 0;
-        kunukkuCleared.push(bidderSeat);
+  if (made) {
+    // One clip shed per staked base card, so a made 20+ bid frees both
+    // partners and a redoubled win wipes the slate clean.
+    let removable = effectiveStake;
+    for (const s of [bidderSeat, partnerOf(bidderSeat)]) {
+      while (removable > 0 && kunukku[s] > 0) {
+        kunukku[s] = (kunukku[s] - 1) as KunukkuLevel;
+        removable--;
+        if (!kunukkuCleared.includes(s)) kunukkuCleared.push(s);
       }
-    } else {
-      kunukku[bidderSeat] = 2;
-      kunukkuDoubled.push(bidderSeat);
+    }
+  } else if (pointsCaptured[biddingTeam] < state.bidding.minBid) {
+    addClip(kunukku[bidderSeat] < 2 ? bidderSeat : partnerOf(bidderSeat));
+  }
+
+  if (pointsCaptured[otherTeam] === 0) {
+    for (const s of ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === otherTeam)) {
+      addClip(s);
     }
   }
 
-  // Marking: the defending team is shamed with a kunukku if they failed to score a single point.
-  if (pointsCaptured[otherTeam] === 0) {
-    const teamSeats = ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === otherTeam);
-    for (const s of teamSeats) {
-      if (kunukku[s] === 0) {
-        kunukku[s] = 1;
-        kunukkuMarked.push(s);
-      }
+  // Bottoming out: handing over your last base card forces the whole team
+  // into the kunukku state - they must now win a round to survive.
+  if (cardsTransferred > 0 && baseCards[roundLoserTeam] === 0) {
+    for (const s of ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === roundLoserTeam)) {
+      addClip(s);
     }
   }
 
@@ -372,22 +447,36 @@ function finishRound(state: GameState): GameState {
     made
       ? `Bidding team captured ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid made${kappu ? ' with a KAPPU (all 8 kai)!' : '.'}`
       : `Bidding team captured only ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid failed.`,
-    `Score: Team A ${scores[0]} - Team B ${scores[1]}`,
+    cardsTransferred > 0
+      ? `Team ${roundLoserTeam === 0 ? 'A' : 'B'} hands over ${cardsTransferred} base card${cardsTransferred > 1 ? 's' : ''}${effectiveStake > 1 ? ` (stakes: ${bid >= HIGH_BID_THRESHOLD ? 'high bid' : 'standard'}${state.doubled ? state.redoubled ? ', redoubled' : ', doubled' : ''})` : ''}. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
+      : `Team ${roundLoserTeam === 0 ? 'A' : 'B'} has no base cards left to hand over.`,
   ];
-  for (const s of kunukkuMarked) log.push(`${playerName(state.players, s)} is shut out and marked with a kunukku!`);
-  for (const s of kunukkuCleared) log.push(`${playerName(state.players, s)} clears their kunukku!`);
-  for (const s of kunukkuDoubled) log.push(`${playerName(state.players, s)} fails to clear their kunukku — it doubles!`);
+  for (const s of kunukkuMarked) log.push(`${playerName(state.players, s)} wears a kunukku clip!`);
+  for (const s of kunukkuCleared) log.push(`${playerName(state.players, s)} sheds a kunukku clip!`);
+  for (const s of kunukkuDoubled) log.push(`${playerName(state.players, s)} takes a second kunukku clip!`);
+  if (cardsTransferred > 0 && baseCards[roundLoserTeam] === 0) {
+    log.push(
+      `Team ${roundLoserTeam === 0 ? 'A' : 'B'} is stripped of base cards — kunukku state! They must win a round to survive.`
+    );
+  }
 
-  let winner: 0 | 1 | null = scores[0] >= state.targetScore ? 0 : scores[1] >= state.targetScore ? 1 : null;
+  // Match end: reaching 12-0 alone doesn't finish it. The stripped team gets
+  // a last stand - if they lose yet another round while already at zero,
+  // they are broken and the match is over.
+  let winner: 0 | 1 | null = loserEnteredAtZero ? roundWinnerTeam : null;
   let kunukkuBlockedWinner: 0 | 1 | null = null;
   if (winner !== null) {
     const winningSeats = ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === winner);
     if (winningSeats.some((s) => kunukku[s] > 0)) {
       kunukkuBlockedWinner = winner;
       log.push(
-        `Team ${winner === 0 ? 'A' : 'B'} reached the target score but must clear their kunukku before winning!`
+        `Team ${winner === 0 ? 'A' : 'B'} had the match won but must clear their own kunukku first!`
       );
       winner = null;
+    } else {
+      log.push(
+        `Team ${roundLoserTeam === 0 ? 'A' : 'B'} had nothing left to give — Team ${winner === 0 ? 'A' : 'B'} breaks them and wins the match!`
+      );
     }
   }
 
@@ -398,7 +487,12 @@ function finishRound(state: GameState): GameState {
     pointsCaptured,
     made,
     kappu,
-    scoreDelta,
+    doubled: state.doubled,
+    redoubled: state.redoubled,
+    stakeMultiplier: state.stakeMultiplier,
+    roundWinnerTeam,
+    cardsTransferred,
+    baseCardsAfter: baseCards,
     kunukkuMarked,
     kunukkuCleared,
     kunukkuDoubled,
@@ -408,7 +502,7 @@ function finishRound(state: GameState): GameState {
   return {
     ...state,
     phase: winner !== null ? 'game_end' : 'round_end',
-    scores,
+    baseCards,
     history: [...state.history, result],
     log,
     winner,
@@ -420,6 +514,8 @@ function finishRound(state: GameState): GameState {
 export function getCurrentActorSeat(state: Pick<GameState, 'phase' | 'bidding' | 'trick'>): Seat | null {
   if (state.phase === 'bidding') return state.bidding.turnSeat;
   if (state.phase === 'trump_selection') return state.bidding.currentBidderSeat;
+  if (state.phase === 'doubling') return nextSeat(state.bidding.currentBidderSeat as Seat);
+  if (state.phase === 'redoubling') return state.bidding.currentBidderSeat;
   if (state.phase === 'playing') {
     return state.trick.cards.length === 0
       ? (state.trick.leadSeat as Seat)

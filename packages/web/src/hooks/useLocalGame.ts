@@ -10,6 +10,8 @@ import {
   chooseTrump,
   createGame,
   decideBotAction,
+  declareDouble,
+  declareRedouble,
   getCurrentActorSeat,
   getPlayerView,
   placeBid,
@@ -32,8 +34,8 @@ function buildPlayers(humanName: string): Player[] {
   }));
 }
 
-export function useLocalGame(humanName: string, targetScore: number, difficulty: BotDifficulty = 'regular') {
-  const [state, setState] = useState<GameState>(() => createGame(buildPlayers(humanName), { targetScore }));
+export function useLocalGame(humanName: string, baseCardsPerTeam: number, difficulty: BotDifficulty = 'regular') {
+  const [state, setState] = useState<GameState>(() => createGame(buildPlayers(humanName), { baseCardsPerTeam }));
   const botTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -53,6 +55,8 @@ export function useLocalGame(humanName: string, targetScore: number, difficulty:
           const action = decideBotAction(view, difficulty);
           if (action.type === 'bid') return placeBid(prev, seat, action.value);
           if (action.type === 'trump') return chooseTrump(prev, seat, action.suit);
+          if (action.type === 'double') return declareDouble(prev, seat, action.accept);
+          if (action.type === 'redouble') return declareRedouble(prev, seat, action.accept);
           if (action.type === 'reveal') return requestTrumpReveal(prev, seat);
           if (action.type === 'play') return playCard(prev, seat, action.card);
           return prev;
@@ -115,14 +119,36 @@ export function useLocalGame(humanName: string, targetScore: number, difficulty:
     });
   }, []);
 
+  const double = useCallback((accept: boolean) => {
+    setState((prev) => {
+      try {
+        return declareDouble(prev, HUMAN_SEAT, accept);
+      } catch (err) {
+        console.error(err);
+        return prev;
+      }
+    });
+  }, []);
+
+  const redouble = useCallback((accept: boolean) => {
+    setState((prev) => {
+      try {
+        return declareRedouble(prev, HUMAN_SEAT, accept);
+      } catch (err) {
+        console.error(err);
+        return prev;
+      }
+    });
+  }, []);
+
   const nextRound = useCallback(() => {
     setState((prev) => startNextRound(prev));
   }, []);
 
   const restart = useCallback(() => {
-    setState(createGame(buildPlayers(humanName), { targetScore }));
+    setState(createGame(buildPlayers(humanName), { baseCardsPerTeam }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [humanName, targetScore]);
+  }, [humanName, baseCardsPerTeam]);
 
-  return { state, view, humanSeat: HUMAN_SEAT, bid, pickTrump, callTrump, play, nextRound, restart };
+  return { state, view, humanSeat: HUMAN_SEAT, bid, pickTrump, callTrump, play, double, redouble, nextRound, restart };
 }

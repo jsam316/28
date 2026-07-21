@@ -6,8 +6,10 @@ import type { Card, Seat, Suit } from '@twenty-eight/engine';
 import { cleanupStaleRooms, findOpenSeat, getOrCreateRoom, touch } from './rooms.js';
 import {
   applyBid,
+  applyDouble,
   applyNextRound,
   applyPlay,
+  applyRedouble,
   applyReveal,
   applyTrump,
   broadcastRoom,
@@ -75,11 +77,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('room:start', ({ targetScore }: { targetScore?: number }) => {
+  socket.on('room:start', ({ baseCards }: { baseCards?: number }) => {
     if (!data.roomCode) return;
     const room = getOrCreateRoom(data.roomCode);
     try {
-      startGame(io, room, targetScore ?? 6);
+      startGame(io, room, baseCards ?? 6);
     } catch (err) {
       socket.emit('room:error', { message: (err as Error).message });
     }
@@ -91,6 +93,14 @@ io.on('connection', (socket) => {
 
   socket.on('game:trump', ({ suit }: { suit: Suit }) => {
     withRoom((room) => applyTrump(room, data.seat as Seat, suit));
+  });
+
+  socket.on('game:double', ({ accept }: { accept: boolean }) => {
+    withRoom((room) => applyDouble(room, data.seat as Seat, Boolean(accept)));
+  });
+
+  socket.on('game:redouble', ({ accept }: { accept: boolean }) => {
+    withRoom((room) => applyRedouble(room, data.seat as Seat, Boolean(accept)));
   });
 
   socket.on('game:revealTrump', () => {

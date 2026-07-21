@@ -7,6 +7,9 @@ import {
   chooseTrump,
   createGame,
   decideBotAction,
+  declareDouble,
+  declareRedouble,
+  getCurrentActorSeat,
   getPlayerView,
   minNextBid,
   placeBid,
@@ -54,6 +57,24 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
     s = chooseTrump(s, seat, action.suit);
   }
 
+  if (s.phase === 'doubling') {
+    const seat = getCurrentActorSeat(s) as Seat;
+    const view = getPlayerView(s, seat);
+    const action = decideBotAction(view, difficulty);
+    if (action.type !== 'double') throw new Error('Expected double action');
+    if (action.accept) doubleStats.doubles++;
+    s = declareDouble(s, seat, action.accept);
+  }
+
+  if (s.phase === 'redoubling') {
+    const seat = getCurrentActorSeat(s) as Seat;
+    const view = getPlayerView(s, seat);
+    const action = decideBotAction(view, difficulty);
+    if (action.type !== 'redouble') throw new Error('Expected redouble action');
+    if (action.accept) doubleStats.redoubles++;
+    s = declareRedouble(s, seat, action.accept);
+  }
+
   guard = 0;
   while (s.phase === 'playing') {
     guard++;
@@ -73,7 +94,8 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
   return s;
 }
 
-const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0 };
+const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0, zeroStrips: 0 };
+const doubleStats = { doubles: 0, redoubles: 0 };
 
 function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
   const totalPoints = s.completedTricks.reduce((sum, t) => sum + t.points, 0);
@@ -117,28 +139,60 @@ function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
 
 function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
   const players = makePlayers();
-  let state = createGame(players, { targetScore: 6 });
+  let state = createGame(players, { baseCardsPerTeam: 6 });
   let rounds = 0;
   while (state.phase !== 'game_end') {
     rounds++;
-    if (rounds > 300) throw new Error('Game did not converge to a winner (possible kunukku deadlock)');
+    if (rounds > 2000) throw new Error('Game did not converge to a winner (possible base-card/kunukku deadlock)');
     state = playOneRound(state, difficulty);
     assertInvariants(state, rounds);
     for (const k of state.kunukku) {
       if (k !== 0 && k !== 1 && k !== 2) throw new Error(`Invalid kunukku level ${k}`);
+    }
+    if (state.baseCards[0] + state.baseCards[1] !== state.totalBaseCards) {
+      throw new Error(
+        `Base cards leaked: ${state.baseCards[0]} + ${state.baseCards[1]} != ${state.totalBaseCards}`
+      );
+    }
+    if (state.baseCards[0] < 0 || state.baseCards[1] < 0) {
+      throw new Error(`Negative base-card count: ${state.baseCards[0]}, ${state.baseCards[1]}`);
     }
     const lastResult = state.history[state.history.length - 1];
     kunukkuStats.marked += lastResult.kunukkuMarked.length;
     kunukkuStats.cleared += lastResult.kunukkuCleared.length;
     kunukkuStats.doubled += lastResult.kunukkuDoubled.length;
     if (lastResult.kunukkuBlockedWinner !== null) kunukkuStats.blockedWins++;
+    if (![1, 2, 4].includes(lastResult.stakeMultiplier)) {
+      throw new Error(`Invalid stake multiplier ${lastResult.stakeMultiplier}`);
+    }
+    const maxStake = (lastResult.bid >= 20 ? 2 : 1) * lastResult.stakeMultiplier;
+    if (lastResult.cardsTransferred > maxStake) {
+      throw new Error(
+        `Transferred ${lastResult.cardsTransferred} cards with a max stake of ${maxStake} (bid ${lastResult.bid}, multiplier ${lastResult.stakeMultiplier})`
+      );
+    }
+    if (lastResult.redoubled && !lastResult.doubled) {
+      throw new Error('Redoubled round without a double');
+    }
+    if (lastResult.baseCardsAfter[0] === 0 || lastResult.baseCardsAfter[1] === 0) {
+      kunukkuStats.zeroStrips++;
+    }
     if (state.phase === 'round_end') {
       state = startNextRound(state);
     }
   }
+  if (state.winner === null) throw new Error('game_end with no winner');
+  if (state.baseCards[state.winner] !== state.totalBaseCards) {
+    throw new Error(`Winner declared without holding all base cards: ${state.baseCards[state.winner]}`);
+  }
   const last = state.history[state.history.length - 1];
+  // A match can only end as the breaking blow against a team that entered
+  // the round already stripped - so nothing changes hands on the final round.
+  if (last.cardsTransferred !== 0) {
+    throw new Error(`Match ended on a round that still transferred ${last.cardsTransferred} cards`);
+  }
   console.log(
-    `Game ${gameIndex} [${difficulty}]: winner=Team ${state.winner} after ${rounds} rounds, final score ${state.scores[0]}-${state.scores[1]}, last round bid=${last.bid} made=${last.made}`
+    `Game ${gameIndex} [${difficulty}]: winner=Team ${state.winner} after ${rounds} rounds, base cards ${state.baseCards[0]}-${state.baseCards[1]}, last round bid=${last.bid} made=${last.made}`
   );
 }
 
@@ -149,6 +203,8 @@ for (let i = 1; i <= GAMES; i++) {
 }
 console.log(`\nAll ${GAMES} simulated games completed with valid invariants (mixed bot difficulties).`);
 console.log(
-  `Kunukku activity across all games: ${kunukkuStats.marked} marked, ${kunukkuStats.cleared} cleared, ` +
-    `${kunukkuStats.doubled} doubled, ${kunukkuStats.blockedWins} blocked-win events.`
+  `Kunukku activity across all games: ${kunukkuStats.marked} first clips, ${kunukkuStats.cleared} seats shed clips, ` +
+    `${kunukkuStats.doubled} second clips, ${kunukkuStats.blockedWins} blocked-win events, ` +
+    `${kunukkuStats.zeroStrips} rounds ending with a team stripped to zero.`
 );
+console.log(`Stake calls across all games: ${doubleStats.doubles} doubles, ${doubleStats.redoubles} redoubles.`);

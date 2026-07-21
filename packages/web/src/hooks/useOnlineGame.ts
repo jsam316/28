@@ -78,8 +78,8 @@ export function useOnlineGame(name: string, roomCode: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, name]);
 
-  const startGame = useCallback((targetScore: number) => {
-    socketRef.current.emit('room:start', { targetScore });
+  const startGame = useCallback((baseCards: number) => {
+    socketRef.current.emit('room:start', { baseCards });
   }, []);
 
   const bid = useCallback((value: 'pass' | number) => {
@@ -98,9 +98,17 @@ export function useOnlineGame(name: string, roomCode: string) {
     socketRef.current.emit('game:play', { card });
   }, []);
 
+  const double = useCallback((accept: boolean) => {
+    socketRef.current.emit('game:double', { accept });
+  }, []);
+
+  const redouble = useCallback((accept: boolean) => {
+    socketRef.current.emit('game:redouble', { accept });
+  }, []);
+
   const nextRound = useCallback(() => {
     socketRef.current.emit('game:nextRound', {});
   }, []);
 
-  return { status, error, seat, room, view, startGame, bid, pickTrump, callTrump, play, nextRound };
+  return { status, error, seat, room, view, startGame, bid, pickTrump, callTrump, play, double, redouble, nextRound };
 }

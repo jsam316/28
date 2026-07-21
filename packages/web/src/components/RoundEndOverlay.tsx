@@ -30,22 +30,45 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
               : 'Bid made!'
             : `Bid failed — needed ${result.bid}, captured only ${result.pointsCaptured[result.biddingTeam]}.`}
         </p>
+        {(result.stakeMultiplier > 1 || result.bid >= 20) && (
+          <p className="result-failed">
+            Raised stakes this round:{result.bid >= 20 ? ' high bid (20+) ×2' : ''}
+            {result.doubled ? (result.redoubled ? ' · REDOUBLED ×4' : ' · DOUBLED ×2') : ''}
+          </p>
+        )}
         <p>
-          Score change: Team A {result.scoreDelta[0] > 0 ? `+${result.scoreDelta[0]}` : 0}, Team B{' '}
-          {result.scoreDelta[1] > 0 ? `+${result.scoreDelta[1]}` : 0}
+          {result.cardsTransferred > 0 ? (
+            <>
+              Team {result.roundWinnerTeam === 0 ? 'B' : 'A'} hands over {result.cardsTransferred} base card
+              {result.cardsTransferred > 1 ? 's' : ''}. Base cards: Team A {result.baseCardsAfter[0]}, Team B{' '}
+              {result.baseCardsAfter[1]}.
+            </>
+          ) : (
+            <>No base cards left to hand over.</>
+          )}
         </p>
+        {result.cardsTransferred > 0 && result.baseCardsAfter[result.roundWinnerTeam === 0 ? 1 : 0] === 0 && (
+          <p className="result-failed">
+            Team {result.roundWinnerTeam === 0 ? 'B' : 'A'} is stripped of base cards — kunukku state! They must win a
+            round to survive; losing again means the match.
+          </p>
+        )}
         {result.kunukkuMarked.length > 0 && (
           <p className="result-failed">
-            Shut out! {result.kunukkuMarked.map(playerName).join(' & ')} {result.kunukkuMarked.length > 1 ? 'are' : 'is'}{' '}
-            marked with a kunukku.
+            {result.kunukkuMarked.map(playerName).join(' & ')} {result.kunukkuMarked.length > 1 ? 'wear' : 'wears'} the
+            kunukku clip!
           </p>
         )}
         {result.kunukkuCleared.length > 0 && (
-          <p className="result-made">{result.kunukkuCleared.map(playerName).join(' & ')} cleared their kunukku!</p>
+          <p className="result-made">
+            {result.kunukkuCleared.map(playerName).join(' & ')} {result.kunukkuCleared.length > 1 ? 'shed' : 'sheds'}{' '}
+            kunukku clips!
+          </p>
         )}
         {result.kunukkuDoubled.length > 0 && (
           <p className="result-failed">
-            {result.kunukkuDoubled.map(playerName).join(' & ')} failed to clear the kunukku — it doubled!
+            {result.kunukkuDoubled.map(playerName).join(' & ')} {result.kunukkuDoubled.length > 1 ? 'take' : 'takes'} a
+            second kunukku clip!
           </p>
         )}
         {result.kunukkuBlockedWinner !== null && (

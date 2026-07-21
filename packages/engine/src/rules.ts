@@ -24,19 +24,6 @@ export function minNextBid(currentBid: number | null, minBid: number, secondBatc
   return secondBatchDealt ? Math.max(next, SECOND_ROUND_MIN_BID) : next;
 }
 
-export interface BidStakes {
-  win: number;
-  failPenalty: number;
-}
-
-// Higher bids carry more risk and more reward, matching how the game is
-// scored in practice rather than a flat one point either way.
-export function bidStakes(bid: number): BidStakes {
-  if (bid >= 25) return { win: 3, failPenalty: 4 };
-  if (bid >= 20) return { win: 2, failPenalty: 3 };
-  return { win: 1, failPenalty: 1 };
-}
-
 export function resolveTrick(cards: PlayedCard[], trumpSuit: Suit | null, trickNumber: number): CompletedTrick {
   const ledSuit = cards[0].card.suit;
   const trumpPlays = trumpSuit ? cards.filter((pc) => pc.card.suit === trumpSuit) : [];
