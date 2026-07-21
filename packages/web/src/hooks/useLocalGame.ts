@@ -20,8 +20,13 @@ import {
   startNextRound,
 } from '@twenty-eight/engine';
 
+import { TRICK_ANIM_TOTAL_MS } from '../components/TrickArea';
+
 const HUMAN_SEAT: Seat = 0;
 const BOT_DELAY_MS = 700;
+// When a bot leads a fresh kai, the previous kai is still resting/sweeping on
+// the table — wait for that to finish so its 4th card stays visible.
+const BOT_LEAD_DELAY_MS = TRICK_ANIM_TOTAL_MS + 150;
 
 function buildPlayers(humanName: string): Player[] {
   const botNames = ['Anitha', 'Rajan', 'Deepa'];
@@ -46,6 +51,12 @@ export function useLocalGame(humanName: string, baseCardsPerTeam: number, diffic
     const actor = getCurrentActorSeat(state);
     if (actor === null || actor === HUMAN_SEAT) return;
 
+    // A bot about to lead a fresh kai (after the first) waits for the
+    // previous kai's rest+sweep animation to finish before playing.
+    const leadingFreshKai =
+      state.phase === 'playing' && state.trick.cards.length === 0 && state.completedTricks.length > 0;
+    const delay = leadingFreshKai ? BOT_LEAD_DELAY_MS : BOT_DELAY_MS;
+
     botTimer.current = setTimeout(() => {
       setState((prev) => {
         const seat = getCurrentActorSeat(prev);
@@ -65,7 +76,7 @@ export function useLocalGame(humanName: string, baseCardsPerTeam: number, diffic
           return prev;
         }
       });
-    }, BOT_DELAY_MS);
+    }, delay);
 
     return () => {
       if (botTimer.current) clearTimeout(botTimer.current);
