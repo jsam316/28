@@ -30,9 +30,10 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
               : 'Bid made!'
             : `Bid failed — needed ${result.bid}, captured only ${result.pointsCaptured[result.biddingTeam]}.`}
         </p>
-        {result.stakeMultiplier > 1 && (
+        {(result.stakeMultiplier > 1 || result.bid >= 20) && (
           <p className="result-failed">
-            Stakes were {result.redoubled ? 'REDOUBLED (×4)' : 'DOUBLED (×2)'} this round!
+            Raised stakes this round:{result.bid >= 20 ? ' high bid (20+) ×2' : ''}
+            {result.doubled ? (result.redoubled ? ' · REDOUBLED ×4' : ' · DOUBLED ×2') : ''}
           </p>
         )}
         <p>
@@ -46,6 +47,12 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
             <>No base cards left to hand over.</>
           )}
         </p>
+        {result.cardsTransferred > 0 && result.baseCardsAfter[result.roundWinnerTeam === 0 ? 1 : 0] === 0 && (
+          <p className="result-failed">
+            Team {result.roundWinnerTeam === 0 ? 'B' : 'A'} is stripped of base cards — kunukku state! They must win a
+            round to survive; losing again means the match.
+          </p>
+        )}
         {result.kunukkuMarked.length > 0 && (
           <p className="result-failed">
             {result.kunukkuMarked.map(playerName).join(' & ')} {result.kunukkuMarked.length > 1 ? 'wear' : 'wears'} the

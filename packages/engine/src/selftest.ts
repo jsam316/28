@@ -94,7 +94,7 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
   return s;
 }
 
-const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0 };
+const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0, zeroStrips: 0 };
 const doubleStats = { doubles: 0, redoubles: 0 };
 
 function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
@@ -165,13 +165,17 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     if (![1, 2, 4].includes(lastResult.stakeMultiplier)) {
       throw new Error(`Invalid stake multiplier ${lastResult.stakeMultiplier}`);
     }
-    if (lastResult.cardsTransferred > lastResult.stakeMultiplier) {
+    const maxStake = (lastResult.bid >= 20 ? 2 : 1) * lastResult.stakeMultiplier;
+    if (lastResult.cardsTransferred > maxStake) {
       throw new Error(
-        `Transferred ${lastResult.cardsTransferred} cards with multiplier ${lastResult.stakeMultiplier}`
+        `Transferred ${lastResult.cardsTransferred} cards with a max stake of ${maxStake} (bid ${lastResult.bid}, multiplier ${lastResult.stakeMultiplier})`
       );
     }
     if (lastResult.redoubled && !lastResult.doubled) {
       throw new Error('Redoubled round without a double');
+    }
+    if (lastResult.baseCardsAfter[0] === 0 || lastResult.baseCardsAfter[1] === 0) {
+      kunukkuStats.zeroStrips++;
     }
     if (state.phase === 'round_end') {
       state = startNextRound(state);
@@ -182,6 +186,11 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     throw new Error(`Winner declared without holding all base cards: ${state.baseCards[state.winner]}`);
   }
   const last = state.history[state.history.length - 1];
+  // A match can only end as the breaking blow against a team that entered
+  // the round already stripped - so nothing changes hands on the final round.
+  if (last.cardsTransferred !== 0) {
+    throw new Error(`Match ended on a round that still transferred ${last.cardsTransferred} cards`);
+  }
   console.log(
     `Game ${gameIndex} [${difficulty}]: winner=Team ${state.winner} after ${rounds} rounds, base cards ${state.baseCards[0]}-${state.baseCards[1]}, last round bid=${last.bid} made=${last.made}`
   );
@@ -195,6 +204,7 @@ for (let i = 1; i <= GAMES; i++) {
 console.log(`\nAll ${GAMES} simulated games completed with valid invariants (mixed bot difficulties).`);
 console.log(
   `Kunukku activity across all games: ${kunukkuStats.marked} first clips, ${kunukkuStats.cleared} seats shed clips, ` +
-    `${kunukkuStats.doubled} second clips, ${kunukkuStats.blockedWins} blocked-win events.`
+    `${kunukkuStats.doubled} second clips, ${kunukkuStats.blockedWins} blocked-win events, ` +
+    `${kunukkuStats.zeroStrips} rounds ending with a team stripped to zero.`
 );
 console.log(`Stake calls across all games: ${doubleStats.doubles} doubles, ${doubleStats.redoubles} redoubles.`);

@@ -21,6 +21,7 @@ export function BiddingPanel({ bidding, you, players, secondBatchDealt, onBid }:
     <div className="bidding-panel">
       <div className="bidding-stage">
         {secondBatchDealt ? 'Final bidding round — bids of 24+ only, or let it stand' : 'Bidding — round 1'}
+        <div className="bidding-stakes-note">Bids of 20+ put 2 base cards on the line</div>
       </div>
       <div className="bidding-status">
         <strong>{bidding.currentBid === null ? 'No bid yet' : `Current bid: ${bidding.currentBid}`}</strong>

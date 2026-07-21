@@ -24,6 +24,10 @@ export interface GameOptions {
 
 const DEFAULTS = { baseCardsPerTeam: 6, minBid: 14, maxBid: 28 };
 
+// Bids of 20 or more put 2 base cards on the line instead of 1 (before any
+// double/redouble multiplier).
+export const HIGH_BID_THRESHOLD = 20;
+
 function dealRound(
   players: Player[],
   dealerSeat: Seat,
@@ -380,12 +384,14 @@ function finishRound(state: GameState): GameState {
   const made = pointsCaptured[biddingTeam] >= bid;
   const kappu = tricksWonByTeam[biddingTeam] === 8;
 
-  // The base-card exchange: the losing team hands base cards to the winners
-  // (1 normally, 2 doubled, 4 redoubled). Collecting every base card wins
-  // the match.
+  // The base-card exchange: the losing team hands base cards to the winners.
+  // High bids (20+) stake 2 cards, and a double/redouble multiplies that
+  // again - so a redoubled 20+ bid can swing 8 cards in one round.
   const roundWinnerTeam: 0 | 1 = made ? biddingTeam : otherTeam;
   const roundLoserTeam: 0 | 1 = roundWinnerTeam === 0 ? 1 : 0;
-  const cardsTransferred = Math.min(state.stakeMultiplier, state.baseCards[roundLoserTeam]);
+  const loserEnteredAtZero = state.baseCards[roundLoserTeam] === 0;
+  const effectiveStake = (bid >= HIGH_BID_THRESHOLD ? 2 : 1) * state.stakeMultiplier;
+  const cardsTransferred = Math.min(effectiveStake, state.baseCards[roundLoserTeam]);
   const baseCards: [number, number] = [...state.baseCards];
   baseCards[roundLoserTeam] -= cardsTransferred;
   baseCards[roundWinnerTeam] += cardsTransferred;
@@ -408,7 +414,9 @@ function finishRound(state: GameState): GameState {
   };
 
   if (made) {
-    let removable = state.stakeMultiplier;
+    // One clip shed per staked base card, so a made 20+ bid frees both
+    // partners and a redoubled win wipes the slate clean.
+    let removable = effectiveStake;
     for (const s of [bidderSeat, partnerOf(bidderSeat)]) {
       while (removable > 0 && kunukku[s] > 0) {
         kunukku[s] = (kunukku[s] - 1) as KunukkuLevel;
@@ -426,30 +434,49 @@ function finishRound(state: GameState): GameState {
     }
   }
 
+  // Bottoming out: handing over your last base card forces the whole team
+  // into the kunukku state - they must now win a round to survive.
+  if (cardsTransferred > 0 && baseCards[roundLoserTeam] === 0) {
+    for (const s of ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === roundLoserTeam)) {
+      addClip(s);
+    }
+  }
+
   const log = [
     ...state.log,
     made
       ? `Bidding team captured ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid made${kappu ? ' with a KAPPU (all 8 kai)!' : '.'}`
       : `Bidding team captured only ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid failed.`,
     cardsTransferred > 0
-      ? `Team ${roundLoserTeam === 0 ? 'A' : 'B'} hands over ${cardsTransferred} base card${cardsTransferred > 1 ? 's' : ''}${state.stakeMultiplier > 1 ? ` (${state.redoubled ? 'redoubled' : 'doubled'} stakes)` : ''}. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
+      ? `Team ${roundLoserTeam === 0 ? 'A' : 'B'} hands over ${cardsTransferred} base card${cardsTransferred > 1 ? 's' : ''}${effectiveStake > 1 ? ` (stakes: ${bid >= HIGH_BID_THRESHOLD ? 'high bid' : 'standard'}${state.doubled ? state.redoubled ? ', redoubled' : ', doubled' : ''})` : ''}. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
       : `Team ${roundLoserTeam === 0 ? 'A' : 'B'} has no base cards left to hand over.`,
   ];
   for (const s of kunukkuMarked) log.push(`${playerName(state.players, s)} wears a kunukku clip!`);
   for (const s of kunukkuCleared) log.push(`${playerName(state.players, s)} sheds a kunukku clip!`);
   for (const s of kunukkuDoubled) log.push(`${playerName(state.players, s)} takes a second kunukku clip!`);
+  if (cardsTransferred > 0 && baseCards[roundLoserTeam] === 0) {
+    log.push(
+      `Team ${roundLoserTeam === 0 ? 'A' : 'B'} is stripped of base cards — kunukku state! They must win a round to survive.`
+    );
+  }
 
-  let winner: 0 | 1 | null =
-    baseCards[0] >= state.totalBaseCards ? 0 : baseCards[1] >= state.totalBaseCards ? 1 : null;
+  // Match end: reaching 12-0 alone doesn't finish it. The stripped team gets
+  // a last stand - if they lose yet another round while already at zero,
+  // they are broken and the match is over.
+  let winner: 0 | 1 | null = loserEnteredAtZero ? roundWinnerTeam : null;
   let kunukkuBlockedWinner: 0 | 1 | null = null;
   if (winner !== null) {
     const winningSeats = ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === winner);
     if (winningSeats.some((s) => kunukku[s] > 0)) {
       kunukkuBlockedWinner = winner;
       log.push(
-        `Team ${winner === 0 ? 'A' : 'B'} holds all ${state.totalBaseCards} base cards but must clear their kunukku before winning!`
+        `Team ${winner === 0 ? 'A' : 'B'} had the match won but must clear their own kunukku first!`
       );
       winner = null;
+    } else {
+      log.push(
+        `Team ${roundLoserTeam === 0 ? 'A' : 'B'} had nothing left to give — Team ${winner === 0 ? 'A' : 'B'} breaks them and wins the match!`
+      );
     }
   }
 

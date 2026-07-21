@@ -36,8 +36,7 @@ export function GameEndOverlay({ winner, baseCards, totalBaseCards, lastResult, 
             </p>
             {lastResult.stakeMultiplier > 1 && (
               <p className="result-failed">
-                Stakes were {lastResult.redoubled ? 'REDOUBLED (×4)' : 'DOUBLED (×2)'} — {lastResult.cardsTransferred}{' '}
-                base card{lastResult.cardsTransferred > 1 ? 's' : ''} changed hands.
+                Stakes were {lastResult.redoubled ? 'REDOUBLED (×4)' : 'DOUBLED (×2)'} on the final round.
               </p>
             )}
             {lastResult.kunukkuCleared.length > 0 && (
@@ -49,7 +48,8 @@ export function GameEndOverlay({ winner, baseCards, totalBaseCards, lastResult, 
           </>
         )}
         <p>
-          They collected all {totalBaseCards} base cards (Team A {baseCards[0]} — Team B {baseCards[1]}).
+          Team {winner === 0 ? 'B' : 'A'} had no base cards left to give — Team {winner === 0 ? 'A' : 'B'} holds all{' '}
+          {totalBaseCards} and breaks them! (Team A {baseCards[0]} — Team B {baseCards[1]})
         </p>
         {onRestart && (
           <button type="button" className="btn btn-primary" onClick={onRestart}>
