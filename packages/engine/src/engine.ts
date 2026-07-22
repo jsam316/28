@@ -393,11 +393,10 @@ function finishRound(state: GameState): GameState {
   baseCards[roundWinnerTeam] += cardsTransferred;
 
   // --- Kunukku (ear-clip) bookkeeping ---
-  // Each seat wears 0-2 clips. Winning a made bid redeems the bidding
-  // team's clips (one per staked base card, so a redouble wipes the slate);
-  // failing to capture even the minimum bid's worth of points hangs a clip
-  // on the bidder (their partner takes it if both ears are full); defenders
-  // shut out without a single point are clipped too.
+  // Each seat wears 0-2 clips. Per the authentic rule, a kunukku is shed ONLY
+  // by winning your own bid as declarer - never by defending. A made low bid
+  // frees just the bidder's own clip; a made bid of 20+ (which stakes 2-4
+  // cards) frees both partners, so one clip is shed per staked base card.
   const kunukku = [...state.kunukku] as [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel];
   const kunukkuMarked: Seat[] = [];
   const kunukkuCleared: Seat[] = [];
@@ -409,9 +408,9 @@ function finishRound(state: GameState): GameState {
     (kunukku[s] === 1 ? kunukkuMarked : kunukkuDoubled).push(s);
   };
 
+  // Clip removal: only the declaring team, only on a made bid. Sheds one clip
+  // per staked base card starting from the bidder, then the partner.
   if (made) {
-    // One clip shed per staked base card, so a made high bid (which stakes
-    // 2 or 4) frees both partners and a redoubled win wipes the slate clean.
     let removable = effectiveStake;
     for (const s of [bidderSeat, partnerOf(bidderSeat)]) {
       while (removable > 0 && kunukku[s] > 0) {
@@ -420,10 +419,18 @@ function finishRound(state: GameState): GameState {
         if (!kunukkuCleared.includes(s)) kunukkuCleared.push(s);
       }
     }
-  } else if (pointsCaptured[biddingTeam] < state.bidding.minBid) {
-    addClip(kunukku[bidderSeat] < 2 ? bidderSeat : partnerOf(bidderSeat));
   }
 
+  // Clip additions (these always land on the round's losing team):
+  // a failed bid clips the bidder when it couldn't even reach the minimum,
+  // OR when it was a failed clearance attempt (the bidder was already wearing
+  // a clip and bid to redeem it - the "double kunukku", regardless of points).
+  // The extra clip goes on the bidder's other ear, or the partner if the
+  // bidder's ears are already full.
+  if (!made && (pointsCaptured[biddingTeam] < state.bidding.minBid || state.kunukku[bidderSeat] > 0)) {
+    addClip(kunukku[bidderSeat] < 2 ? bidderSeat : partnerOf(bidderSeat));
+  }
+  // ...defenders shut out without a single point are both clipped...
   if (pointsCaptured[otherTeam] === 0) {
     for (const s of ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === otherTeam)) {
       addClip(s);
