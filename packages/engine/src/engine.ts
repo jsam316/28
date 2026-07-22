@@ -393,11 +393,10 @@ function finishRound(state: GameState): GameState {
   baseCards[roundWinnerTeam] += cardsTransferred;
 
   // --- Kunukku (ear-clip) bookkeeping ---
-  // Each seat wears 0-2 clips. Winning a made bid redeems the bidding
-  // team's clips (one per staked base card, so a redouble wipes the slate);
-  // failing to capture even the minimum bid's worth of points hangs a clip
-  // on the bidder (their partner takes it if both ears are full); defenders
-  // shut out without a single point are clipped too.
+  // Each seat wears 0-2 clips. Per the authentic rule, a kunukku is shed ONLY
+  // by winning your own bid as declarer - never by defending. A made low bid
+  // frees just the bidder's own clip; a made bid of 20+ (which stakes 2-4
+  // cards) frees both partners, so one clip is shed per staked base card.
   const kunukku = [...state.kunukku] as [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel];
   const kunukkuMarked: Seat[] = [];
   const kunukkuCleared: Seat[] = [];
@@ -409,14 +408,11 @@ function finishRound(state: GameState): GameState {
     (kunukku[s] === 1 ? kunukkuMarked : kunukkuDoubled).push(s);
   };
 
-  // Clip removal: whoever wins the round reclaims base cards, and sheds one
-  // clip per card reclaimed (across both partners). This is how a clipped
-  // team climbs out - whether they won by making a bid or by beating one, the
-  // reclaimed cards are what redeem the clips. A high bid stakes 2-4 cards, so
-  // a big won round can free both partners in one go.
-  let removable = cardsTransferred;
-  if (removable > 0) {
-    for (const s of ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === roundWinnerTeam)) {
+  // Clip removal: only the declaring team, only on a made bid. Sheds one clip
+  // per staked base card starting from the bidder, then the partner.
+  if (made) {
+    let removable = effectiveStake;
+    for (const s of [bidderSeat, partnerOf(bidderSeat)]) {
       while (removable > 0 && kunukku[s] > 0) {
         kunukku[s] = (kunukku[s] - 1) as KunukkuLevel;
         removable--;

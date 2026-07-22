@@ -158,14 +158,16 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     if (state.baseCards[0] < 0 || state.baseCards[1] < 0) {
       throw new Error(`Negative base-card count: ${state.baseCards[0]}, ${state.baseCards[1]}`);
     }
-    // A team that holds every base card has reclaimed everything, so it must
-    // be clip-free - otherwise the win-block would deadlock the match.
-    for (const t of [0, 1] as const) {
-      if (state.baseCards[t] === state.totalBaseCards) {
-        const clipped = ([0, 1, 2, 3] as Seat[]).filter((s) => s % 2 === t && state.kunukku[s] > 0);
-        if (clipped.length > 0) {
-          throw new Error(`Team ${t} holds all base cards but still wears clips at seats ${clipped}`);
-        }
+    // Authentic-rule sanity: a kunukku is only ever shed by the declaring team
+    // on a made bid. If anyone shed a clip this round, that team must be the
+    // team that just made a bid.
+    const r = state.history[state.history.length - 1];
+    if (r.kunukkuCleared.length > 0 && !r.made) {
+      throw new Error(`Clips cleared on a failed bid (round ${r.roundNumber})`);
+    }
+    for (const s of r.kunukkuCleared) {
+      if (s % 2 !== r.biddingTeam) {
+        throw new Error(`Seat ${s} shed a clip but is not on the declaring team ${r.biddingTeam}`);
       }
     }
     const lastResult = state.history[state.history.length - 1];
