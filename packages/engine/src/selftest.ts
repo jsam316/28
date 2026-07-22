@@ -145,6 +145,7 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
   while (state.phase !== 'game_end') {
     rounds++;
     if (rounds > 2000) throw new Error('Game did not converge to a winner (possible base-card/kunukku deadlock)');
+    const preKunukku = [...state.kunukku] as [number, number, number, number];
     state = playOneRound(state, difficulty);
     assertInvariants(state, rounds);
     for (const k of state.kunukku) {
@@ -168,6 +169,20 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     for (const s of r.kunukkuCleared) {
       if (s % 2 !== r.biddingTeam) {
         throw new Error(`Seat ${s} shed a clip but is not on the declaring team ${r.biddingTeam}`);
+      }
+    }
+    // Failed clearance: a bidder who entered the round already clipped and then
+    // failed their bid takes a second clip (on their other ear, or the partner
+    // if both their ears are full) - so the declaring team's clip total must
+    // rise, unless it was already saturated at 4.
+    const bidderSeat = state.bidding.currentBidderSeat as Seat;
+    if (!r.made && preKunukku[bidderSeat] > 0) {
+      const teamBefore = preKunukku[r.biddingTeam] + preKunukku[r.biddingTeam + 2];
+      const teamAfter = state.kunukku[r.biddingTeam] + state.kunukku[r.biddingTeam + 2];
+      if (teamBefore < 4 && teamAfter <= teamBefore) {
+        throw new Error(
+          `Failed clearance by clipped bidder ${bidderSeat} added no clip (team clips ${teamBefore} -> ${teamAfter})`
+        );
       }
     }
     const lastResult = state.history[state.history.length - 1];

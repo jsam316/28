@@ -422,9 +422,12 @@ function finishRound(state: GameState): GameState {
   }
 
   // Clip additions (these always land on the round's losing team):
-  // a failed bid that couldn't even reach the minimum clips the bidder
-  // (their partner takes it if the bidder's ears are full)...
-  if (!made && pointsCaptured[biddingTeam] < state.bidding.minBid) {
+  // a failed bid clips the bidder when it couldn't even reach the minimum,
+  // OR when it was a failed clearance attempt (the bidder was already wearing
+  // a clip and bid to redeem it - the "double kunukku", regardless of points).
+  // The extra clip goes on the bidder's other ear, or the partner if the
+  // bidder's ears are already full.
+  if (!made && (pointsCaptured[biddingTeam] < state.bidding.minBid || state.kunukku[bidderSeat] > 0)) {
     addClip(kunukku[bidderSeat] < 2 ? bidderSeat : partnerOf(bidderSeat));
   }
   // ...defenders shut out without a single point are both clipped...
