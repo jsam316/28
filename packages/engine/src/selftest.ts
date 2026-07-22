@@ -158,6 +158,16 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     if (state.baseCards[0] < 0 || state.baseCards[1] < 0) {
       throw new Error(`Negative base-card count: ${state.baseCards[0]}, ${state.baseCards[1]}`);
     }
+    // A team that holds every base card has reclaimed everything, so it must
+    // be clip-free - otherwise the win-block would deadlock the match.
+    for (const t of [0, 1] as const) {
+      if (state.baseCards[t] === state.totalBaseCards) {
+        const clipped = ([0, 1, 2, 3] as Seat[]).filter((s) => s % 2 === t && state.kunukku[s] > 0);
+        if (clipped.length > 0) {
+          throw new Error(`Team ${t} holds all base cards but still wears clips at seats ${clipped}`);
+        }
+      }
+    }
     const lastResult = state.history[state.history.length - 1];
     kunukkuStats.marked += lastResult.kunukkuMarked.length;
     kunukkuStats.cleared += lastResult.kunukkuCleared.length;

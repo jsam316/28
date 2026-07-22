@@ -409,21 +409,29 @@ function finishRound(state: GameState): GameState {
     (kunukku[s] === 1 ? kunukkuMarked : kunukkuDoubled).push(s);
   };
 
-  if (made) {
-    // One clip shed per staked base card, so a made high bid (which stakes
-    // 2 or 4) frees both partners and a redoubled win wipes the slate clean.
-    let removable = effectiveStake;
-    for (const s of [bidderSeat, partnerOf(bidderSeat)]) {
+  // Clip removal: whoever wins the round reclaims base cards, and sheds one
+  // clip per card reclaimed (across both partners). This is how a clipped
+  // team climbs out - whether they won by making a bid or by beating one, the
+  // reclaimed cards are what redeem the clips. A high bid stakes 2-4 cards, so
+  // a big won round can free both partners in one go.
+  let removable = cardsTransferred;
+  if (removable > 0) {
+    for (const s of ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === roundWinnerTeam)) {
       while (removable > 0 && kunukku[s] > 0) {
         kunukku[s] = (kunukku[s] - 1) as KunukkuLevel;
         removable--;
         if (!kunukkuCleared.includes(s)) kunukkuCleared.push(s);
       }
     }
-  } else if (pointsCaptured[biddingTeam] < state.bidding.minBid) {
-    addClip(kunukku[bidderSeat] < 2 ? bidderSeat : partnerOf(bidderSeat));
   }
 
+  // Clip additions (these always land on the round's losing team):
+  // a failed bid that couldn't even reach the minimum clips the bidder
+  // (their partner takes it if the bidder's ears are full)...
+  if (!made && pointsCaptured[biddingTeam] < state.bidding.minBid) {
+    addClip(kunukku[bidderSeat] < 2 ? bidderSeat : partnerOf(bidderSeat));
+  }
+  // ...defenders shut out without a single point are both clipped...
   if (pointsCaptured[otherTeam] === 0) {
     for (const s of ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === otherTeam)) {
       addClip(s);
