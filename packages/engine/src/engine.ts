@@ -421,28 +421,21 @@ function finishRound(state: GameState): GameState {
     }
   }
 
-  // Clip additions (these always land on the round's losing team):
-  // a failed bid clips the bidder when it couldn't even reach the minimum,
-  // OR when it was a failed clearance attempt (the bidder was already wearing
-  // a clip and bid to redeem it - the "double kunukku", regardless of points).
-  // The extra clip goes on the bidder's other ear, or the partner if the
-  // bidder's ears are already full.
-  if (!made && (pointsCaptured[biddingTeam] < state.bidding.minBid || state.kunukku[bidderSeat] > 0)) {
-    addClip(kunukku[bidderSeat] < 2 ? bidderSeat : partnerOf(bidderSeat));
-  }
-  // ...defenders shut out without a single point are both clipped...
-  if (pointsCaptured[otherTeam] === 0) {
-    for (const s of ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === otherTeam)) {
-      addClip(s);
-    }
-  }
-
-  // Bottoming out: handing over your last base card forces the whole team
-  // into the kunukku state - they must now win a round to survive.
+  // Clip additions. Per the authentic Kerala rule, a kunukku is a TEAM penalty
+  // that lands only when a team's balance is wiped out - both players are
+  // clipped when the team is stripped of its last base card. A single failed
+  // bid or a shut-out on its own does NOT clip anyone; it only matters if it
+  // strips the team to zero.
   if (cardsTransferred > 0 && baseCards[roundLoserTeam] === 0) {
     for (const s of ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === roundLoserTeam)) {
       addClip(s);
     }
+  }
+  // Sinking deeper (double kunukku): an already-clipped bidder who declares to
+  // redeem their kunukku and then fails takes a second clip - on their other
+  // ear, or the partner if both the bidder's ears are already full.
+  if (!made && state.kunukku[bidderSeat] > 0) {
+    addClip(kunukku[bidderSeat] < 2 ? bidderSeat : partnerOf(bidderSeat));
   }
 
   const log = [
