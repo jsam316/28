@@ -136,6 +136,20 @@ function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
     throw new Error(`Expected the last kai to retain all 4 cards, got ${s.trick.cards.length}`);
   }
 
+  // A concealed trump has no power: if the trump was never revealed this round,
+  // every kai must have been won by a card of its led suit (no off-suit ruffs).
+  if (!s.trump.revealed) {
+    for (const t of s.completedTricks) {
+      const ledSuit = t.cards[0].card.suit;
+      const winnerCard = t.cards.find((pc) => pc.seat === t.winnerSeat)!.card;
+      if (winnerCard.suit !== ledSuit) {
+        throw new Error(
+          `Kai ${t.trickNumber} won by off-suit ${winnerCard.rank}${winnerCard.suit} while trump was never revealed`
+        );
+      }
+    }
+  }
+
   // Match history must accumulate across rounds, not reset.
   if (s.history.length !== roundsCompletedSoFar) {
     throw new Error(`Expected history to have ${roundsCompletedSoFar} entries, got ${s.history.length}`);
