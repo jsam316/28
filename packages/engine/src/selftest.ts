@@ -99,15 +99,27 @@ const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0, zeroSt
 const doubleStats = { doubles: 0, redoubles: 0 };
 
 function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
+  // A round can end early the moment the bid is mathematically lost, so it may
+  // have fewer than 8 completed kai, uncaptured points, and cards left in hand.
+  const earlyEnded = s.completedTricks.length < 8;
   const totalPoints = s.completedTricks.reduce((sum, t) => sum + t.points, 0);
-  if (totalPoints !== TOTAL_POINTS) {
-    throw new Error(`Expected total points ${TOTAL_POINTS}, got ${totalPoints}`);
+  if (totalPoints > TOTAL_POINTS) {
+    throw new Error(`Captured more than ${TOTAL_POINTS} points: ${totalPoints}`);
   }
-  for (const seat of [0, 1, 2, 3] as Seat[]) {
-    if (s.hands[seat].length !== 0) {
-      throw new Error(`Seat ${seat} still has ${s.hands[seat].length} cards after round`);
-    }
+  if (!earlyEnded && totalPoints !== TOTAL_POINTS) {
+    throw new Error(`Full round should capture all ${TOTAL_POINTS} points, got ${totalPoints}`);
   }
+
+  const cardsPlayed = s.completedTricks.length * 4;
+  let cardsInHands = 0;
+  for (const seat of [0, 1, 2, 3] as Seat[]) cardsInHands += s.hands[seat].length;
+  if (cardsPlayed + cardsInHands !== 32) {
+    throw new Error(`Card count mismatch: ${cardsPlayed} played + ${cardsInHands} in hands != 32`);
+  }
+  if (!earlyEnded && cardsInHands !== 0) {
+    throw new Error(`Full round should empty all hands, ${cardsInHands} remain`);
+  }
+
   const cardSet = new Set<string>();
   for (const t of s.completedTricks) {
     for (const pc of t.cards) {
@@ -116,25 +128,35 @@ function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
       cardSet.add(id);
     }
   }
-  if (cardSet.size !== 32) throw new Error(`Expected 32 unique cards played, got ${cardSet.size}`);
+  if (cardSet.size !== cardsPlayed) throw new Error(`Expected ${cardsPlayed} unique cards played, got ${cardSet.size}`);
 
-  // The final trick's 4 cards must survive into the round-end state so the
-  // UI can actually render/animate the last card played, not just the
-  // engine's internal bookkeeping of who won it.
+  // The last completed kai's 4 cards must survive into the round-end state so
+  // the UI can render/animate the final card played.
   if (s.trick.cards.length !== 4) {
-    throw new Error(`Expected the final trick to retain all 4 cards, got ${s.trick.cards.length}`);
+    throw new Error(`Expected the last kai to retain all 4 cards, got ${s.trick.cards.length}`);
   }
 
-  // Match history must accumulate across rounds, not reset - this is what
-  // backs the running points-captured total shown in the UI.
+  // Match history must accumulate across rounds, not reset.
   if (s.history.length !== roundsCompletedSoFar) {
     throw new Error(`Expected history to have ${roundsCompletedSoFar} entries, got ${s.history.length}`);
   }
-  const historyPointsTotal = s.history.reduce((sum, r) => sum + r.pointsCaptured[0] + r.pointsCaptured[1], 0);
-  if (historyPointsTotal !== TOTAL_POINTS * roundsCompletedSoFar) {
-    throw new Error(
-      `Expected cumulative history points ${TOTAL_POINTS * roundsCompletedSoFar}, got ${historyPointsTotal}`
-    );
+  for (const r of s.history) {
+    const rp = r.pointsCaptured[0] + r.pointsCaptured[1];
+    if (rp < 0 || rp > TOTAL_POINTS) {
+      throw new Error(`Round ${r.roundNumber} captured ${rp} points (out of range)`);
+    }
+  }
+
+  // An early end can only happen on a failed bid the defenders have locked out.
+  if (earlyEnded) {
+    const r = s.history[s.history.length - 1];
+    if (r.made) throw new Error(`Early-ended round ${r.roundNumber} was marked as made`);
+    const defenderPts = r.pointsCaptured[r.biddingTeam === 0 ? 1 : 0];
+    if (defenderPts <= TOTAL_POINTS - r.bid) {
+      throw new Error(
+        `Round ${r.roundNumber} ended early without a lockout: defenders ${defenderPts}, need > ${TOTAL_POINTS - r.bid}`
+      );
+    }
   }
 }
 

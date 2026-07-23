@@ -360,6 +360,22 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
     return finishRound({ ...state, hands, trick, completedTricks, log: cloneLog(state, ...log) });
   }
 
+  // End the round the moment the outcome is settled: if the defending team has
+  // already captured more than (28 - bid), the bidding team can no longer reach
+  // its bid however the remaining kai fall, so the bid has failed - stop here.
+  const biddingTeam = teamOf(state.bidding.currentBidderSeat as Seat);
+  const defendingTeam = biddingTeam === 0 ? 1 : 0;
+  const defenderPoints = completedTricks
+    .filter((t) => teamOf(t.winnerSeat) === defendingTeam)
+    .reduce((sum, t) => sum + t.points, 0);
+  const bid = state.bidding.currentBid as number;
+  if (defenderPoints > TOTAL_POINTS - bid) {
+    log.push(
+      `Defenders have ${defenderPoints} pts — the bid of ${bid} can no longer be made. The round ends early.`
+    );
+    return finishRound({ ...state, hands, trick, completedTricks, log: cloneLog(state, ...log) });
+  }
+
   const newTrick = { leadSeat: completed.winnerSeat, cards: [], trickNumber: trick.trickNumber + 1 };
   return { ...state, hands, trick: newTrick, completedTricks, log: cloneLog(state, ...log) };
 }
