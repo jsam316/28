@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getCurrentActorSeat, nextSeat, type Card, type PlayerView, type Seat, type Suit } from '@twenty-eight/engine';
+import { getCurrentActorSeat, nextSeat, type Card, type PlayerView, type Seat } from '@twenty-eight/engine';
 import { PlayerSeat, seatPosition } from './PlayerSeat';
 import { TrickArea, TRICK_ANIM_TOTAL_MS } from './TrickArea';
 import { Hand } from './Hand';
@@ -14,7 +14,7 @@ import { GameEndOverlay } from './GameEndOverlay';
 
 export interface GameScreenActions {
   bid: (value: 'pass' | number) => void;
-  pickTrump: (suit: Suit) => void;
+  pickTrump: (card: Card) => void;
   callTrump: () => void;
   play: (card: Card) => void;
   double: (accept: boolean) => void;
@@ -85,7 +85,9 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
 
       <Ticker log={view.log} />
 
-      {view.phase === 'playing' && view.trump.suit && <TrumpBanner suit={view.trump.suit} />}
+      {view.phase === 'playing' && view.trump.suit && (
+        <TrumpBanner suit={view.trump.suit} card={view.trump.card} revealed={view.trump.revealed} />
+      )}
 
       <div className="table">
         {players.map((p) => (

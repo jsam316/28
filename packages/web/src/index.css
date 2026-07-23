@@ -149,6 +149,27 @@ h3 {
   box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
+.btn:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.85) brightness(0.7);
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+.btn:disabled:hover {
+  filter: grayscale(0.85) brightness(0.7);
+}
+
+.btn:disabled:active {
+  transform: none;
+}
+
+.offline-note {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  color: #f2c9a0;
+}
+
 .btn-primary {
   background: linear-gradient(180deg, var(--gold-light), var(--gold) 60%, var(--gold-dark));
   color: #2b2000;

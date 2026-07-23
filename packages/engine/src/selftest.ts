@@ -55,7 +55,7 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
     const view = getPlayerView(s, seat);
     const action = decideBotAction(view, difficulty);
     if (action.type !== 'trump') throw new Error('Expected trump action');
-    s = chooseTrump(s, seat, action.suit);
+    s = chooseTrump(s, seat, action.card);
   }
 
   if (s.phase === 'doubling') {
@@ -86,6 +86,18 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
     if (action.type === 'reveal') {
       s = requestTrumpReveal(s, seat);
     } else if (action.type === 'play') {
+      // The bidder must not be able to play their concealed trump card unless
+      // it is the only legal card they have left.
+      const t = s.trump;
+      if (
+        t.chosenBySeat === seat &&
+        !t.revealed &&
+        t.card &&
+        `${action.card.rank}${action.card.suit}` === `${t.card.rank}${t.card.suit}` &&
+        view.legalCards.length > 1
+      ) {
+        throw new Error('Bidder played the concealed trump card while other legal cards were available');
+      }
       s = playCard(s, seat, action.card);
     } else {
       throw new Error(`Unexpected action ${action.type} during play`);

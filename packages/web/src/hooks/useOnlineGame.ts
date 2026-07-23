@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Card, PlayerView, Seat, Suit } from '@twenty-eight/engine';
+import type { Card, PlayerView, Seat } from '@twenty-eight/engine';
 import { getSocket } from '../net/socket';
 
 export interface RoomSeatInfo {
@@ -86,8 +86,8 @@ export function useOnlineGame(name: string, roomCode: string) {
     socketRef.current.emit('game:bid', { value });
   }, []);
 
-  const pickTrump = useCallback((suit: Suit) => {
-    socketRef.current.emit('game:trump', { suit });
+  const pickTrump = useCallback((card: Card) => {
+    socketRef.current.emit('game:trump', { card });
   }, []);
 
   const callTrump = useCallback(() => {

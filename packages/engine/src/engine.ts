@@ -79,7 +79,7 @@ function dealRound(
     firstBatchSize: 4,
     secondBatchDealt: false,
     bidding,
-    trump: { suit: null, chosenBySeat: null, revealed: false },
+    trump: { suit: null, card: null, chosenBySeat: null, revealed: false },
     trick: { leadSeat: null, cards: [], trickNumber: 1 },
     completedTricks: [],
     baseCards,
@@ -249,18 +249,21 @@ function beginPlay(state: GameState, log: string[]): GameState {
   };
 }
 
-export function chooseTrump(state: GameState, seat: Seat, suit: Suit): GameState {
+export function chooseTrump(state: GameState, seat: Seat, card: Card): GameState {
   if (state.phase !== 'trump_selection') throw new Error('Not in trump selection phase');
   if (state.bidding.currentBidderSeat !== seat) throw new Error('Only the bid winner chooses trump');
+  if (!state.hands[seat].some((c) => cardId(c) === cardId(card))) {
+    throw new Error('Trump card must be one of your own cards');
+  }
 
   const deciderSeat = nextSeat(seat);
   return {
     ...state,
-    trump: { suit, chosenBySeat: seat, revealed: false },
+    trump: { suit: card.suit, card, chosenBySeat: seat, revealed: false },
     phase: 'doubling',
     log: cloneLog(
       state,
-      `${playerName(state.players, seat)} picks trump (concealed).`,
+      `${playerName(state.players, seat)} sets a trump card aside (concealed).`,
       `${playerName(state.players, deciderSeat)} may double the stakes.`
     ),
   };
@@ -309,16 +312,17 @@ export function requestTrumpReveal(state: GameState, seat: Seat): GameState {
   if (state.trump.revealed) throw new Error('Trump already revealed');
   const ledSuit = state.trick.cards[0]?.card.suit ?? null;
   if (ledSuit === null) throw new Error('Cannot call for trump when leading');
-  const hand = state.hands[seat];
-  const canFollow = hand.some((c) => c.suit === ledSuit);
+  const canFollow = playableHand(state, seat).some((c) => c.suit === ledSuit);
   if (canFollow) throw new Error('You must be void in the led suit to call for trump');
 
+  const trumpCard = state.trump.card;
+  const cardLabel = trumpCard ? `${trumpCard.rank}${trumpCard.suit}` : (state.trump.suit as string);
   return {
     ...state,
     trump: { ...state.trump, revealed: true },
     log: cloneLog(
       state,
-      `${playerName(state.players, seat)} calls for trump. Trump is ${state.trump.suit}.`
+      `${playerName(state.players, seat)} calls for trump. The trump card is ${cardLabel}.`
     ),
   };
 }
@@ -334,7 +338,9 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
   if (idx === -1) throw new Error('Card not in hand');
 
   const ledSuit = state.trick.cards[0]?.card.suit ?? null;
-  const legal = legalCardsFor(hand, ledSuit);
+  // Validate against the playable hand so the bidder's concealed trump is held
+  // back (and does not force a follow) exactly as getLegalCards reports.
+  const legal = legalCardsFor(playableHand(state, seat), ledSuit);
   if (!legal.some((c) => cardId(c) === cardId(card))) {
     throw new Error('Illegal card: must follow suit if possible');
   }
@@ -539,13 +545,25 @@ export function getCurrentActorSeat(state: Pick<GameState, 'phase' | 'bidding' |
   return null;
 }
 
+// The cards a seat may actually play right now. The bidder's set-aside trump
+// card is held back while it stays concealed - it does not count for following
+// suit either - unless it is the only card the bidder has left.
+function playableHand(state: GameState, seat: Seat): Card[] {
+  const t = state.trump;
+  if (t.chosenBySeat === seat && !t.revealed && t.card) {
+    const rest = state.hands[seat].filter((c) => cardId(c) !== cardId(t.card as Card));
+    return rest.length > 0 ? rest : state.hands[seat];
+  }
+  return state.hands[seat];
+}
+
 export function getLegalCards(state: GameState, seat: Seat): Card[] {
   if (state.phase !== 'playing') return [];
   const expectedSeat =
     state.trick.cards.length === 0 ? state.trick.leadSeat : nextSeat(state.trick.cards[state.trick.cards.length - 1].seat);
   if (expectedSeat !== seat) return [];
   const ledSuit = state.trick.cards[0]?.card.suit ?? null;
-  return legalCardsFor(state.hands[seat], ledSuit);
+  return legalCardsFor(playableHand(state, seat), ledSuit);
 }
 
 export function canRequestTrumpReveal(state: GameState, seat: Seat): boolean {
@@ -556,7 +574,7 @@ export function canRequestTrumpReveal(state: GameState, seat: Seat): boolean {
   if (expectedSeat !== seat) return false;
   const ledSuit = state.trick.cards[0]?.card.suit ?? null;
   if (ledSuit === null) return false;
-  return !state.hands[seat].some((c) => c.suit === ledSuit);
+  return !playableHand(state, seat).some((c) => c.suit === ledSuit);
 }
 
 export { TOTAL_POINTS };

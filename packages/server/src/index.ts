@@ -2,7 +2,7 @@ import http from 'node:http';
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
-import type { Card, Seat, Suit } from '@twenty-eight/engine';
+import type { Card, Seat } from '@twenty-eight/engine';
 import { cleanupStaleRooms, findOpenSeat, getOrCreateRoom, touch } from './rooms.js';
 import {
   applyBid,
@@ -91,8 +91,8 @@ io.on('connection', (socket) => {
     withRoom((room) => applyBid(room, data.seat as Seat, value));
   });
 
-  socket.on('game:trump', ({ suit }: { suit: Suit }) => {
-    withRoom((room) => applyTrump(room, data.seat as Seat, suit));
+  socket.on('game:trump', ({ card }: { card: Card }) => {
+    withRoom((room) => applyTrump(room, data.seat as Seat, card));
   });
 
   socket.on('game:double', ({ accept }: { accept: boolean }) => {

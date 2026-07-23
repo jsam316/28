@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { BotDifficulty } from '@twenty-eight/engine';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface HomeProps {
   onPlaySolo: (name: string, baseCardsPerTeam: number, difficulty: BotDifficulty) => void;
@@ -10,6 +11,7 @@ export function Home({ onPlaySolo, onGoOnline }: HomeProps) {
   const [name, setName] = useState('');
   const [baseCards, setBaseCards] = useState(6);
   const [difficulty, setDifficulty] = useState<BotDifficulty>('regular');
+  const online = useOnlineStatus();
 
   return (
     <div className="home">
@@ -57,9 +59,15 @@ export function Home({ onPlaySolo, onGoOnline }: HomeProps) {
       <div className="home-section">
         <h2>Online multiplayer</h2>
         <p>Play with 3 friends in real time, each on their own device.</p>
-        <button type="button" className="btn btn-secondary" onClick={() => onGoOnline(name || 'You')}>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => onGoOnline(name || 'You')}
+          disabled={!online}
+        >
           Play Online
         </button>
+        {!online && <p className="offline-note">You're offline — single player still works.</p>}
       </div>
     </div>
   );
