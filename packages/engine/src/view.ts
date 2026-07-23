@@ -10,7 +10,8 @@ export function getPlayerView(state: GameState, seat: Seat): PlayerView {
   ];
 
   const isChooser = state.trump.chosenBySeat === seat;
-  const trumpSuit = state.trump.revealed || isChooser ? state.trump.suit : null;
+  const seesTrump = state.trump.revealed || isChooser;
+  const trumpSuit = seesTrump ? state.trump.suit : null;
 
   return {
     you: seat,
@@ -23,6 +24,7 @@ export function getPlayerView(state: GameState, seat: Seat): PlayerView {
     bidding: state.bidding,
     trump: {
       suit: trumpSuit,
+      card: seesTrump ? state.trump.card : null,
       concealedForYou: !state.trump.revealed && !isChooser && state.trump.suit !== null,
       chosenBySeat: state.trump.chosenBySeat,
       revealed: state.trump.revealed,

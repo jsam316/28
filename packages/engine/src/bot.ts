@@ -11,7 +11,7 @@ import {
 
 export type BotAction =
   | { type: 'bid'; value: 'pass' | number }
-  | { type: 'trump'; suit: Suit }
+  | { type: 'trump'; card: Card }
   | { type: 'double'; accept: boolean }
   | { type: 'redouble'; accept: boolean }
   | { type: 'reveal' }
@@ -110,15 +110,24 @@ function decideRedouble(view: PlayerView, difficulty: BotDifficulty): BotAction 
   return { type: 'redouble', accept: score >= 30 || (desperate && score >= 22) };
 }
 
+// Set aside the LOWEST card of the chosen trump suit, keeping the high trumps
+// in hand to ruff and win kai with once the trump is revealed.
+function lowestOfSuit(hand: Card[], suit: Suit): Card {
+  return hand
+    .filter((c) => c.suit === suit)
+    .sort((a, b) => cardStrength(a) - cardStrength(b))[0];
+}
+
 function decideTrump(view: PlayerView, difficulty: BotDifficulty): BotAction {
   const profile = DIFFICULTY_PROFILES[difficulty];
   if (profile.mistakeChance > 0 && Math.random() < profile.mistakeChance) {
     const suits: Suit[] = ['S', 'H', 'D', 'C'];
     const candidates = suits.filter((s) => view.hand.some((c) => c.suit === s));
-    return { type: 'trump', suit: candidates[Math.floor(Math.random() * candidates.length)] };
+    const suit = candidates[Math.floor(Math.random() * candidates.length)];
+    return { type: 'trump', card: lowestOfSuit(view.hand, suit) };
   }
   const { suit } = bestSuit(view.hand);
-  return { type: 'trump', suit };
+  return { type: 'trump', card: lowestOfSuit(view.hand, suit) };
 }
 
 function currentBestPlay(

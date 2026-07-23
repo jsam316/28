@@ -3,7 +3,6 @@ import {
   type Card,
   type Player,
   type Seat,
-  type Suit,
   chooseTrump,
   createGame,
   decideBotAction,
@@ -99,9 +98,9 @@ export function applyBid(room: Room, seat: Seat, value: 'pass' | number) {
   touch(room);
 }
 
-export function applyTrump(room: Room, seat: Seat, suit: Suit) {
+export function applyTrump(room: Room, seat: Seat, card: Card) {
   if (!room.state) throw new Error('Game not started');
-  room.state = chooseTrump(room.state, seat, suit);
+  room.state = chooseTrump(room.state, seat, card);
   touch(room);
 }
 
@@ -160,7 +159,7 @@ export function scheduleBots(io: Server, room: Room) {
       const view = getPlayerView(room.state, seat);
       const action = decideBotAction(view);
       if (action.type === 'bid') room.state = placeBid(room.state, seat, action.value);
-      else if (action.type === 'trump') room.state = chooseTrump(room.state, seat, action.suit);
+      else if (action.type === 'trump') room.state = chooseTrump(room.state, seat, action.card);
       else if (action.type === 'double') room.state = declareDouble(room.state, seat, action.accept);
       else if (action.type === 'redouble') room.state = declareRedouble(room.state, seat, action.accept);
       else if (action.type === 'reveal') room.state = requestTrumpReveal(room.state, seat);

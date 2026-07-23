@@ -1,16 +1,24 @@
-import type { Suit } from '@twenty-eight/engine';
-import { suitName, suitSymbol } from './Card';
+import type { Card, Suit } from '@twenty-eight/engine';
+import { PlayingCard, suitName, suitSymbol } from './Card';
 
 interface TrumpBannerProps {
   suit: Suit;
+  card: Card | null;
+  revealed: boolean;
 }
 
-export function TrumpBanner({ suit }: TrumpBannerProps) {
+export function TrumpBanner({ suit, card, revealed }: TrumpBannerProps) {
   const isRed = suit === 'H' || suit === 'D';
   return (
     <div className="trump-banner">
-      <span className={`trump-banner-suit ${isRed ? 'red' : 'black'}`}>{suitSymbol(suit)}</span>
-      <span className="trump-banner-label">Trump is {suitName(suit)}</span>
+      {card ? (
+        <PlayingCard card={card} size="sm" />
+      ) : (
+        <span className={`trump-banner-suit ${isRed ? 'red' : 'black'}`}>{suitSymbol(suit)}</span>
+      )}
+      <span className="trump-banner-label">
+        {revealed ? `Trump is ${suitName(suit)}` : `Your hidden trump — ${suitName(suit)}`}
+      </span>
     </div>
   );
 }

@@ -78,6 +78,7 @@ export interface BiddingState {
 
 export interface TrumpState {
   suit: Suit | null;
+  card: Card | null; // the specific card set aside face-down as the trump
   chosenBySeat: Seat | null;
   revealed: boolean;
 }
@@ -162,6 +163,7 @@ export interface PlayerView {
   bidding: BiddingState;
   trump: {
     suit: Suit | null; // null if concealed and you are not the chooser
+    card: Card | null; // the set-aside trump card, shown only to the chooser until revealed
     concealedForYou: boolean;
     chosenBySeat: Seat | null;
     revealed: boolean;
