@@ -139,13 +139,17 @@ function smartPlay(view: PlayerView): Card {
   const legal = view.legalCards;
   if (legal.length === 1) return legal[0];
 
-  const trumpSuit = view.trump.suit;
+  // What this bot knows the trump to be (the bidder sees it even while
+  // concealed) vs. the trump that can actually win a kai right now (only once
+  // it has been revealed). A concealed trump is powerless until called.
+  const knownTrump = view.trump.suit;
+  const activeTrump = view.trump.revealed ? view.trump.suit : null;
   const trickCards = view.trick.cards;
 
   if (trickCards.length === 0) {
     // Leading: prefer the strongest card of our longest non-trump suit to probe for a safe winner.
     const suits: Suit[] = ['S', 'H', 'D', 'C'];
-    const nonTrumpSuits = suits.filter((s) => s !== trumpSuit);
+    const nonTrumpSuits = suits.filter((s) => s !== knownTrump);
     let bestSuitChoice: { suit: Suit; count: number } = { suit: legal[0].suit, count: -1 };
     for (const s of nonTrumpSuits) {
       const count = legal.filter((c) => c.suit === s).length;
@@ -164,7 +168,7 @@ function smartPlay(view: PlayerView): Card {
   const ledSuit = trickCards[0].card.suit;
   const you = view.you;
   const myTeam = teamOf(you as 0 | 1 | 2 | 3);
-  const best = currentBestPlay(trickCards, ledSuit, trumpSuit);
+  const best = currentBestPlay(trickCards, ledSuit, activeTrump);
   const partnerOrSelfWinning = teamOf(best.seat as 0 | 1 | 2 | 3) === myTeam;
 
   const canFollowSuit = legal.some((c) => c.suit === ledSuit);
@@ -186,10 +190,11 @@ function smartPlay(view: PlayerView): Card {
     return [...legal].sort((a, b) => cardPoints(a) - cardPoints(b) || cardStrength(a) - cardStrength(b))[0];
   }
 
-  if (trumpSuit) {
-    const trumps = legal.filter((c) => c.suit === trumpSuit);
+  // Ruffing only works once the trump has been revealed.
+  if (activeTrump) {
+    const trumps = legal.filter((c) => c.suit === activeTrump);
     if (trumps.length > 0) {
-      const currentTrumpStrength = best.card.suit === trumpSuit ? cardStrength(best.card) : -1;
+      const currentTrumpStrength = best.card.suit === activeTrump ? cardStrength(best.card) : -1;
       const winningTrumps = trumps
         .filter((c) => cardStrength(c) > currentTrumpStrength)
         .sort((a, b) => cardStrength(a) - cardStrength(b));
@@ -198,6 +203,28 @@ function smartPlay(view: PlayerView): Card {
   }
 
   return [...legal].sort((a, b) => cardPoints(a) - cardPoints(b) || cardStrength(a) - cardStrength(b))[0];
+}
+
+function partnerTakingTrick(view: PlayerView): boolean {
+  const trickCards = view.trick.cards;
+  if (trickCards.length === 0) return false;
+  const activeTrump = view.trump.revealed ? view.trump.suit : null;
+  const ledSuit = trickCards[0].card.suit;
+  const best = currentBestPlay(trickCards, ledSuit, activeTrump);
+  return teamOf(best.seat as 0 | 1 | 2 | 3) === teamOf(view.you as 0 | 1 | 2 | 3);
+}
+
+// Reached only when the bot is void in the led suit and the trump is still
+// concealed. Decide whether to call for it (revealing it to everyone).
+function wantsTrumpReveal(view: PlayerView): boolean {
+  // No point revealing if our side already looks to be taking the kai.
+  if (partnerTakingTrick(view)) return false;
+  // The bidder can see the concealed trump, so only reveal with a trump to
+  // ruff with; anyone else is gambling that they hold one.
+  if (view.trump.suit !== null) {
+    return view.hand.some((c) => c.suit === view.trump.suit);
+  }
+  return true;
 }
 
 function decidePlay(view: PlayerView, difficulty: BotDifficulty): BotAction {
@@ -215,7 +242,7 @@ export function decideBotAction(view: PlayerView, difficulty: BotDifficulty = 'r
   if (view.phase === 'doubling') return decideDouble(view, difficulty);
   if (view.phase === 'redoubling') return decideRedouble(view, difficulty);
   if (view.phase === 'playing') {
-    if (view.trump.suit === null && view.canRequestTrumpReveal) {
+    if (view.canRequestTrumpReveal && wantsTrumpReveal(view)) {
       return { type: 'reveal' };
     }
     return decidePlay(view, difficulty);

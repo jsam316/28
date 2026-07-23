@@ -352,7 +352,10 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
   }
 
   // Trick complete.
-  const completed = resolveTrick(trick.cards, state.trump.suit, trick.trickNumber);
+  // Trump only has power once it has been revealed; a concealed trump card is
+  // just an ordinary off-suit discard and cannot win the kai.
+  const activeTrump = state.trump.revealed ? state.trump.suit : null;
+  const completed = resolveTrick(trick.cards, activeTrump, trick.trickNumber);
   const completedTricks = [...state.completedTricks, completed];
   log.push(`${playerName(state.players, completed.winnerSeat)} wins the kai (${completed.points} pts).`);
 
