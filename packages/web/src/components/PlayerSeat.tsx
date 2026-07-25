@@ -1,4 +1,5 @@
-import type { KunukkuLevel, Player, Seat } from '@twenty-eight/engine';
+import type { Card, KunukkuLevel, Player, Seat } from '@twenty-eight/engine';
+import { PlayingCard } from './Card';
 
 interface PlayerSeatProps {
   player: Player;
@@ -7,12 +8,33 @@ interface PlayerSeatProps {
   isBidder: boolean;
   cardCount: number;
   kunukku: KunukkuLevel;
+  // When set, this seat has a trump card set aside beside it: card === null
+  // shows it face-down (concealed); a card shows it face-up (just revealed).
+  trumpAside?: { card: Card | null };
   position: 'bottom' | 'left' | 'top' | 'right';
 }
 
-export function PlayerSeat({ player, isTurn, isDealer, isBidder, cardCount, kunukku, position }: PlayerSeatProps) {
+export function PlayerSeat({
+  player,
+  isTurn,
+  isDealer,
+  isBidder,
+  cardCount,
+  kunukku,
+  trumpAside,
+  position,
+}: PlayerSeatProps) {
   return (
     <div className={`seat seat-${position} ${isTurn ? 'seat-active' : ''}`}>
+      {trumpAside && (
+        <div className="seat-trump-aside" title="Trump card set aside">
+          {trumpAside.card ? (
+            <PlayingCard card={trumpAside.card} size="sm" />
+          ) : (
+            <div className="card card-back size-sm" aria-label="face-down trump card" />
+          )}
+        </div>
+      )}
       <div className="seat-badges">
         {isDealer && <span className="badge badge-dealer">D</span>}
         {isBidder && <span className="badge badge-bidder">Bid</span>}

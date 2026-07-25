@@ -1,4 +1,4 @@
-import { minNextBid } from './rules.js';
+import { maxBidFor, minNextBid } from './rules.js';
 import {
   type Card,
   type PlayerView,
@@ -70,8 +70,9 @@ function decideBid(view: PlayerView, difficulty: BotDifficulty): BotAction {
   const redemptionBonus = view.kunukku[view.you] > 0 ? 6 : 0;
   const maxWillingBid = Math.round(profile.bidBase + score * 0.65 + jitter + redemptionBonus);
   const { currentBid, minBid, maxBid } = view.bidding;
+  const roundMax = maxBidFor(view.secondBatchDealt, maxBid);
   const nextBid = minNextBid(currentBid, minBid, view.secondBatchDealt);
-  if (nextBid > maxBid || maxWillingBid < nextBid) {
+  if (nextBid > roundMax || maxWillingBid < nextBid) {
     return { type: 'bid', value: 'pass' };
   }
   return { type: 'bid', value: nextBid };

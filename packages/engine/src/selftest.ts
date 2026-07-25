@@ -32,48 +32,46 @@ function makePlayers(): Player[] {
 function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
   let s = state;
   let guard = 0;
-  while (s.phase === 'bidding') {
+  // Bidding now spans two rounds with trump placement (and possibly a re-place)
+  // in between, so drive every pre-play phase from a single loop.
+  while (
+    s.phase === 'bidding' ||
+    s.phase === 'trump_selection' ||
+    s.phase === 'doubling' ||
+    s.phase === 'redoubling'
+  ) {
     guard++;
-    if (guard > 200) throw new Error('Bidding stuck in a loop');
-    const seat = s.bidding.turnSeat;
+    if (guard > 300) throw new Error('Pre-play phases stuck in a loop');
+    const seat = getCurrentActorSeat(s) as Seat;
     const view = getPlayerView(s, seat);
     const action = decideBotAction(view, difficulty);
-    if (action.type !== 'bid') throw new Error('Expected bid action');
-    if (typeof action.value === 'number') {
-      const required = minNextBid(s.bidding.currentBid, s.bidding.minBid, s.secondBatchDealt);
-      if (action.value < required) {
-        throw new Error(
-          `Bot bid ${action.value} below the required minimum ${required} (secondBatchDealt=${s.secondBatchDealt})`
-        );
+    if (s.phase === 'bidding') {
+      if (action.type !== 'bid') throw new Error('Expected bid action');
+      if (typeof action.value === 'number') {
+        const required = minNextBid(s.bidding.currentBid, s.bidding.minBid, s.secondBatchDealt);
+        const roundMax = s.secondBatchDealt ? s.bidding.maxBid : 23;
+        if (action.value < required || action.value > roundMax) {
+          throw new Error(
+            `Bot bid ${action.value} outside [${required}, ${roundMax}] (secondBatchDealt=${s.secondBatchDealt})`
+          );
+        }
       }
+      s = placeBid(s, seat, action.value);
+    } else if (s.phase === 'trump_selection') {
+      if (action.type !== 'trump') throw new Error('Expected trump action');
+      if (!s.hands[seat].some((c) => `${c.rank}${c.suit}` === `${action.card.rank}${action.card.suit}`)) {
+        throw new Error('Bot chose a trump card not in its hand');
+      }
+      s = chooseTrump(s, seat, action.card);
+    } else if (s.phase === 'doubling') {
+      if (action.type !== 'double') throw new Error('Expected double action');
+      if (action.accept) doubleStats.doubles++;
+      s = declareDouble(s, seat, action.accept);
+    } else {
+      if (action.type !== 'redouble') throw new Error('Expected redouble action');
+      if (action.accept) doubleStats.redoubles++;
+      s = declareRedouble(s, seat, action.accept);
     }
-    s = placeBid(s, seat, action.value);
-  }
-
-  if (s.phase === 'trump_selection') {
-    const seat = s.bidding.currentBidderSeat as Seat;
-    const view = getPlayerView(s, seat);
-    const action = decideBotAction(view, difficulty);
-    if (action.type !== 'trump') throw new Error('Expected trump action');
-    s = chooseTrump(s, seat, action.card);
-  }
-
-  if (s.phase === 'doubling') {
-    const seat = getCurrentActorSeat(s) as Seat;
-    const view = getPlayerView(s, seat);
-    const action = decideBotAction(view, difficulty);
-    if (action.type !== 'double') throw new Error('Expected double action');
-    if (action.accept) doubleStats.doubles++;
-    s = declareDouble(s, seat, action.accept);
-  }
-
-  if (s.phase === 'redoubling') {
-    const seat = getCurrentActorSeat(s) as Seat;
-    const view = getPlayerView(s, seat);
-    const action = decideBotAction(view, difficulty);
-    if (action.type !== 'redouble') throw new Error('Expected redouble action');
-    if (action.accept) doubleStats.redoubles++;
-    s = declareRedouble(s, seat, action.accept);
   }
 
   guard = 0;

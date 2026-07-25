@@ -57,9 +57,41 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
 
   const showTable = view.phase === 'playing' || ((view.phase === 'round_end' || view.phase === 'game_end') && !revealOverlay);
 
+  // When the trump is called, flash the actual card beside the bidder's seat
+  // for a beat before it "returns to their hand" and disappears from the table.
+  const [revealedAsideCard, setRevealedAsideCard] = useState<Card | null>(null);
+  useEffect(() => {
+    if (view.trump.revealed && view.trump.card) {
+      setRevealedAsideCard(view.trump.card);
+      const timer = setTimeout(() => setRevealedAsideCard(null), 2200);
+      return () => clearTimeout(timer);
+    }
+    setRevealedAsideCard(null);
+  }, [view.trump.revealed, view.trump.card]);
+
+  const trumpHolder = view.trump.chosenBySeat;
+  const trumpAsideFor = (seat: Seat): { card: Card | null } | undefined => {
+    if (trumpHolder !== seat) return undefined;
+    if (!view.trump.revealed) return { card: null }; // concealed: face-down beside the seat
+    if (revealedAsideCard) return { card: revealedAsideCard }; // just revealed: flash it, then gone
+    return undefined;
+  };
+  const asideConcealedFor = (seat: Seat) => trumpHolder === seat && !view.trump.revealed;
+
+  // The bidder's set-aside trump is held out of their playable hand while
+  // concealed, so hide it from their own hand display too (it shows beside the
+  // seat instead) until the trump is revealed and it returns to hand.
+  const concealedTrumpId =
+    trumpHolder === you && !view.trump.revealed && view.trump.card
+      ? `${view.trump.card.rank}${view.trump.card.suit}`
+      : null;
+  const displayHand = concealedTrumpId
+    ? view.hand.filter((c) => `${c.rank}${c.suit}` !== concealedTrumpId)
+    : view.hand;
+
   const handPreview = (
     <div className="hand">
-      {view.hand.map((c) => (
+      {displayHand.map((c) => (
         <PlayingCard key={`${c.rank}${c.suit}`} card={c} size="lg" />
       ))}
     </div>
@@ -97,8 +129,9 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
             isTurn={currentTurnSeat === p.seat}
             isDealer={view.dealerSeat === p.seat}
             isBidder={view.bidding.currentBidderSeat === p.seat && view.phase !== 'bidding'}
-            cardCount={view.handCounts[p.seat]}
+            cardCount={view.handCounts[p.seat] - (asideConcealedFor(p.seat) ? 1 : 0)}
             kunukku={view.kunukku[p.seat]}
+            trumpAside={trumpAsideFor(p.seat)}
             position={seatPosition(p.seat, you)}
           />
         ))}
@@ -195,13 +228,13 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
 
         {view.phase === 'playing' && (
           <>
-            {view.canRequestTrumpReveal && view.trump.suit === null && (
+            {view.canRequestTrumpReveal && (
               <button type="button" className="btn btn-call-trump" onClick={actions.callTrump}>
                 Call for trump
               </button>
             )}
             <Hand
-              cards={view.hand}
+              cards={displayHand}
               legalCards={view.legalCards}
               canPlay={currentTurnSeat === you}
               onPlay={actions.play}

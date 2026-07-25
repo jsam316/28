@@ -1,4 +1,4 @@
-import { minNextBid, type BiddingState, type Player, type Seat } from '@twenty-eight/engine';
+import { maxBidFor, minNextBid, type BiddingState, type Player, type Seat } from '@twenty-eight/engine';
 
 interface BiddingPanelProps {
   bidding: BiddingState;
@@ -11,8 +11,9 @@ interface BiddingPanelProps {
 export function BiddingPanel({ bidding, you, players, secondBatchDealt, onBid }: BiddingPanelProps) {
   const isYourTurn = bidding.turnSeat === you && !bidding.passed[you];
   const nextBid = minNextBid(bidding.currentBid, bidding.minBid, secondBatchDealt);
+  const roundMax = maxBidFor(secondBatchDealt, bidding.maxBid);
   const options: number[] = [];
-  for (let v = nextBid; v <= Math.min(bidding.maxBid, nextBid + 5); v++) options.push(v);
+  for (let v = nextBid; v <= Math.min(roundMax, nextBid + 5); v++) options.push(v);
 
   const turnName = players.find((p) => p.seat === bidding.turnSeat)?.name ?? '';
   const passLabel = secondBatchDealt && bidding.currentBidderSeat === you ? 'Hold my bid' : 'Pass';
@@ -20,7 +21,7 @@ export function BiddingPanel({ bidding, you, players, secondBatchDealt, onBid }:
   return (
     <div className="bidding-panel">
       <div className="bidding-stage">
-        {secondBatchDealt ? 'Final bidding round — bids of 24+ only, or let it stand' : 'Bidding — round 1'}
+        {secondBatchDealt ? 'Second round — bids of 24 to 28, or let it stand' : 'First round — bids of 14 to 23'}
         <div className="bidding-stakes-note">Stakes: 20–23 bids double (2 cards), 24+ quadruple (4 cards)</div>
       </div>
       <div className="bidding-status">
@@ -28,7 +29,7 @@ export function BiddingPanel({ bidding, you, players, secondBatchDealt, onBid }:
         {bidding.currentBidderSeat !== null && (
           <span> by {players.find((p) => p.seat === bidding.currentBidderSeat)?.name}</span>
         )}
-        <div className="bidding-turn">{isYourTurn ? "Your turn to bid" : `Waiting for ${turnName}...`}</div>
+        <div className="bidding-turn">{isYourTurn ? 'Your turn to bid' : `Waiting for ${turnName}...`}</div>
       </div>
       {isYourTurn && (
         <div className="bidding-actions">
@@ -40,9 +41,9 @@ export function BiddingPanel({ bidding, you, players, secondBatchDealt, onBid }:
               Bid {v}
             </button>
           ))}
-          {bidding.maxBid > nextBid + 5 && (
-            <button type="button" className="btn btn-bid" onClick={() => onBid(bidding.maxBid)}>
-              Bid {bidding.maxBid} (max)
+          {roundMax > nextBid + 5 && (
+            <button type="button" className="btn btn-bid" onClick={() => onBid(roundMax)}>
+              Bid {roundMax} (max)
             </button>
           )}
         </div>
