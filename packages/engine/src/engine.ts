@@ -158,73 +158,83 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
   if (state.bidding.passed[seat]) throw new Error('You already passed');
 
   const bidding = structuredClone(state.bidding);
-  const log: string[] = [];
 
   if (action === 'pass') {
     bidding.passed[seat] = true;
-    log.push(`${playerName(state.players, seat)} passes.`);
-  } else {
-    const minAllowed = minNextBid(bidding.currentBid, bidding.minBid, state.secondBatchDealt);
-    const maxAllowed = maxBidFor(state.secondBatchDealt, bidding.maxBid);
-    if (action < minAllowed) throw new Error(`Bid must be at least ${minAllowed}`);
-    if (action > maxAllowed) throw new Error(`Bid cannot exceed ${maxAllowed}`);
-    bidding.currentBid = action;
-    bidding.currentBidderSeat = seat;
-    log.push(`${playerName(state.players, seat)} bids ${action}.`);
+    bidding.history.push({ seat, action });
+    return advanceBidding({ ...state, bidding }, [`${playerName(state.players, seat)} passes.`]);
   }
 
+  const minAllowed = minNextBid(bidding.currentBid, bidding.minBid, state.secondBatchDealt);
+  const maxAllowed = maxBidFor(state.secondBatchDealt, bidding.maxBid);
+  if (action < minAllowed) throw new Error(`Bid must be at least ${minAllowed}`);
+  if (action > maxAllowed) throw new Error(`Bid cannot exceed ${maxAllowed}`);
+  bidding.currentBid = action;
+  bidding.currentBidderSeat = seat;
   bidding.history.push({ seat, action });
 
+  // Every leading bid is followed by that bidder setting aside a trump card
+  // before the auction moves on; any trump the previous leader set aside simply
+  // reverts to an ordinary card in their hand.
+  return {
+    ...state,
+    bidding,
+    phase: 'trump_selection',
+    log: cloneLog(state, `${playerName(state.players, seat)} bids ${action}.`),
+  };
+}
+
+// Resume the auction after an action (a pass, or a leading bid's trump
+// placement): advance to the next active seat, or close the round out.
+function advanceBidding(state: GameState, log: string[]): GameState {
+  const bidding = structuredClone(state.bidding);
   const remaining: Seat[] = [0, 1, 2, 3].filter((s) => !bidding.passed[s as Seat]) as Seat[];
 
-  let concluded = false;
-
-  if (remaining.length === 0) {
-    concluded = true;
-    if (bidding.currentBidderSeat === null) {
-      // Nobody bid at all (only possible in round one): the dealer is forced
-      // to take the minimum bid.
-      bidding.currentBid = bidding.minBid;
-      bidding.currentBidderSeat = state.dealerSeat;
-      log.push(
-        `Everyone passed. ${playerName(state.players, state.dealerSeat)} is forced to take the bid at ${bidding.minBid}.`
-      );
-    } else {
-      // Someone already holds the bid and nobody raised further: it stands.
-      log.push(
-        `No further raises. ${playerName(state.players, bidding.currentBidderSeat)} holds the bid at ${bidding.currentBid}.`
-      );
-    }
-  } else if (remaining.length === 1 && bidding.currentBidderSeat !== null) {
-    concluded = true;
+  if (remaining.length === 0 && bidding.currentBidderSeat === null) {
+    // Round-one all-pass: the dealer is forced to take the minimum bid and must
+    // still set aside a trump before play.
+    bidding.currentBid = bidding.minBid;
+    bidding.currentBidderSeat = state.dealerSeat;
     log.push(
-      `Bidding closed. ${playerName(state.players, bidding.currentBidderSeat)} wins the bid at ${bidding.currentBid}.`
+      `Everyone passed. ${playerName(state.players, state.dealerSeat)} is forced to take the bid at ${bidding.minBid} and sets a trump aside.`
     );
-  }
-
-  if (!concluded) {
-    let next = nextSeat(seat);
-    while (bidding.passed[next]) next = nextSeat(next);
-    bidding.turnSeat = next;
-    return { ...state, bidding, log: cloneLog(state, ...log) };
-  }
-
-  // Round one closes: the winner sets a trump aside from their first 4 cards.
-  if (!state.secondBatchDealt) {
     return { ...state, bidding, phase: 'trump_selection', log: cloneLog(state, ...log) };
   }
 
-  // Round two closes. If the same seat still holds the bid, the trump it set
-  // aside after round one stands and play preparation continues. If a new
-  // declarer took over, they must re-place the trump.
-  if (bidding.currentBidderSeat === state.trump.chosenBySeat) {
-    log.push(`${playerName(state.players, nextSeat(bidding.currentBidderSeat as Seat))} may double the stakes.`);
-    return { ...state, bidding, phase: 'doubling', log: cloneLog(state, ...log) };
+  const closed =
+    remaining.length === 0 || (remaining.length === 1 && bidding.currentBidderSeat !== null);
+  if (closed) {
+    log.push(
+      `Bidding closed. ${playerName(state.players, bidding.currentBidderSeat as Seat)} holds the bid at ${bidding.currentBid}.`
+    );
+    return concludeBidding({ ...state, bidding }, log);
   }
-  log.push(
-    `${playerName(state.players, bidding.currentBidderSeat as Seat)} takes over the bid and must set aside a new trump.`
-  );
-  return { ...state, bidding, phase: 'trump_selection', log: cloneLog(state, ...log) };
+
+  let next = nextSeat(bidding.turnSeat);
+  while (bidding.passed[next]) next = nextSeat(next);
+  bidding.turnSeat = next;
+  return { ...state, bidding, phase: 'bidding', log: cloneLog(state, ...log) };
+}
+
+// A bidding round is over. Round one deals the rest of the hand and opens the
+// 24+ round; round two moves on to the doubling step.
+function concludeBidding(state: GameState, log: string[]): GameState {
+  if (!state.secondBatchDealt) {
+    const { hands, stock } = dealSecondBatch(state);
+    const reopened: BiddingState = {
+      ...state.bidding,
+      passed: [false, false, false, false],
+      turnSeat: nextSeat(state.dealerSeat),
+    };
+    log.push(
+      `The rest of the hand is dealt. ${playerName(state.players, reopened.turnSeat)} opens the second bidding round (24+).`
+    );
+    return { ...state, hands, stock, secondBatchDealt: true, bidding: reopened, phase: 'bidding', log: cloneLog(state, ...log) };
+  }
+
+  const deciderSeat = nextSeat(state.bidding.currentBidderSeat as Seat);
+  log.push(`${playerName(state.players, deciderSeat)} may double the stakes.`);
+  return { ...state, phase: 'doubling', log: cloneLog(state, ...log) };
 }
 
 function beginPlay(state: GameState, log: string[]): GameState {
@@ -239,51 +249,14 @@ function beginPlay(state: GameState, log: string[]): GameState {
 
 export function chooseTrump(state: GameState, seat: Seat, card: Card): GameState {
   if (state.phase !== 'trump_selection') throw new Error('Not in trump selection phase');
-  if (state.bidding.currentBidderSeat !== seat) throw new Error('Only the bid winner chooses trump');
+  if (state.bidding.currentBidderSeat !== seat) throw new Error('Only the current high bidder chooses trump');
   if (!state.hands[seat].some((c) => cardId(c) === cardId(card))) {
     throw new Error('Trump card must be one of your own cards');
   }
 
+  // Set (or replace) the trump this bidder sets aside, then resume the auction.
   const trump = { suit: card.suit, card, chosenBySeat: seat, revealed: false };
-  const deciderSeat = nextSeat(seat);
-
-  // Round-one placement: after the trump is set aside, the rest of the hand is
-  // dealt and the second bidding round (24+) opens.
-  if (!state.secondBatchDealt) {
-    const { hands, stock } = dealSecondBatch(state);
-    const reopened: BiddingState = {
-      ...state.bidding,
-      passed: [false, false, false, false],
-      turnSeat: nextSeat(state.dealerSeat),
-    };
-    return {
-      ...state,
-      hands,
-      stock,
-      secondBatchDealt: true,
-      trump,
-      bidding: reopened,
-      phase: 'bidding',
-      log: cloneLog(
-        state,
-        `${playerName(state.players, seat)} sets a trump card aside (concealed).`,
-        `The rest of the hand is dealt. ${playerName(state.players, reopened.turnSeat)} opens the second bidding round (24+).`
-      ),
-    };
-  }
-
-  // Round-two re-placement: a new declarer took over, so their trump replaces
-  // the one set aside in round one (which rejoins the previous bidder's hand).
-  return {
-    ...state,
-    trump,
-    phase: 'doubling',
-    log: cloneLog(
-      state,
-      `${playerName(state.players, seat)} sets aside a new trump card (concealed).`,
-      `${playerName(state.players, deciderSeat)} may double the stakes.`
-    ),
-  };
+  return advanceBidding({ ...state, trump }, [`${playerName(state.players, seat)} sets a trump card aside (concealed).`]);
 }
 
 // The defender to the bidder's left speaks for the defending team: yell
