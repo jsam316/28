@@ -1,4 +1,4 @@
-import { canRequestTrumpReveal, getLegalCards } from './engine.js';
+import { canDemandRedeal, canRequestTrumpReveal, getLegalCards } from './engine.js';
 import type { GameState, PlayerView, Seat } from './types.js';
 
 export function getPlayerView(state: GameState, seat: Seat): PlayerView {
@@ -41,6 +41,7 @@ export function getPlayerView(state: GameState, seat: Seat): PlayerView {
     log: state.log,
     winner: state.winner,
     canRequestTrumpReveal: canRequestTrumpReveal(state, seat),
+    canDemandRedeal: canDemandRedeal(state, seat),
     legalCards: getLegalCards(state, seat),
     kunukku: state.kunukku,
   };

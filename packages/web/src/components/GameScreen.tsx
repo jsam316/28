@@ -15,6 +15,7 @@ import { GameEndOverlay } from './GameEndOverlay';
 export interface GameScreenActions {
   bid: (value: 'pass' | number) => void;
   pickTrump: (card: Card) => void;
+  redeal: () => void;
   callTrump: () => void;
   play: (card: Card) => void;
   double: (accept: boolean) => void;
@@ -153,7 +154,9 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
               you={you}
               players={players}
               secondBatchDealt={view.secondBatchDealt}
+              canDemandRedeal={view.canDemandRedeal}
               onBid={actions.bid}
+              onRedeal={actions.redeal}
             />
             {handPreview}
           </>

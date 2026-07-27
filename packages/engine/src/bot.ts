@@ -11,6 +11,7 @@ import {
 
 export type BotAction =
   | { type: 'bid'; value: 'pass' | number }
+  | { type: 'redeal' }
   | { type: 'trump'; card: Card }
   | { type: 'double'; accept: boolean }
   | { type: 'redouble'; accept: boolean }
@@ -247,7 +248,11 @@ function decidePlay(view: PlayerView, difficulty: BotDifficulty): BotAction {
 }
 
 export function decideBotAction(view: PlayerView, difficulty: BotDifficulty = 'regular'): BotAction {
-  if (view.phase === 'bidding') return decideBid(view, difficulty);
+  if (view.phase === 'bidding') {
+    // A completely pointless opening hand is never worth bidding on - throw it in.
+    if (view.canDemandRedeal) return { type: 'redeal' };
+    return decideBid(view, difficulty);
+  }
   if (view.phase === 'trump_selection') return decideTrump(view, difficulty);
   if (view.phase === 'doubling') return decideDouble(view, difficulty);
   if (view.phase === 'redoubling') return decideRedouble(view, difficulty);

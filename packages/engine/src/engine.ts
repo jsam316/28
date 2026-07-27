@@ -11,6 +11,7 @@ import {
   type Suit,
   TOTAL_POINTS,
   cardId,
+  cardPoints,
   nextSeat,
   teamOf,
 } from './types.js';
@@ -136,6 +137,48 @@ export function startNextRound(state: GameState, options: GameOptions = {}): Gam
     state.history,
     state.kunukku
   );
+}
+
+// The player who opens the bidding may throw the hand in if their first four
+// cards are completely pointless (only K, Q, 8, 7). It is their choice, and
+// only theirs - the other three have no say however poor their cards are.
+export function canDemandRedeal(state: GameState, seat: Seat): boolean {
+  if (state.phase !== 'bidding') return false;
+  if (state.secondBatchDealt) return false;
+  if (state.bidding.history.length > 0) return false; // only before any bid or pass
+  if (state.bidding.turnSeat !== seat) return false;
+  return state.hands[seat].every((c) => cardPoints(c) === 0);
+}
+
+export function demandRedeal(state: GameState, seat: Seat, options: GameOptions = {}): GameState {
+  if (!canDemandRedeal(state, seat)) {
+    throw new Error('You cannot demand a redeal right now');
+  }
+  const opts: Required<GameOptions> = {
+    baseCardsPerTeam: state.totalBaseCards / 2,
+    minBid: state.bidding.minBid,
+    maxBid: state.bidding.maxBid,
+    rng: options.rng ?? Math.random,
+  };
+  // Same dealer deals the same round again; the match state carries over.
+  const fresh = dealRound(
+    state.players,
+    state.dealerSeat,
+    state.baseCards,
+    state.totalBaseCards,
+    state.roundNumber,
+    opts,
+    state.history,
+    state.kunukku
+  );
+  return {
+    ...fresh,
+    log: [
+      ...state.log,
+      `${playerName(state.players, seat)} has no point cards and demands a redeal.`,
+      ...fresh.log,
+    ],
+  };
 }
 
 function cloneLog(state: GameState, ...lines: string[]): string[] {

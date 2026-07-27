@@ -180,6 +180,7 @@ export interface PlayerView {
   log: string[];
   winner: 0 | 1 | null;
   canRequestTrumpReveal: boolean;
+  canDemandRedeal: boolean;
   legalCards: Card[];
   kunukku: [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel];
 }
