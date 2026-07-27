@@ -5,10 +5,20 @@ interface BiddingPanelProps {
   you: Seat;
   players: Player[];
   secondBatchDealt: boolean;
+  canDemandRedeal: boolean;
   onBid: (value: 'pass' | number) => void;
+  onRedeal: () => void;
 }
 
-export function BiddingPanel({ bidding, you, players, secondBatchDealt, onBid }: BiddingPanelProps) {
+export function BiddingPanel({
+  bidding,
+  you,
+  players,
+  secondBatchDealt,
+  canDemandRedeal,
+  onBid,
+  onRedeal,
+}: BiddingPanelProps) {
   const isYourTurn = bidding.turnSeat === you && !bidding.passed[you];
   const nextBid = minNextBid(bidding.currentBid, bidding.minBid, secondBatchDealt);
   const roundMax = maxBidFor(secondBatchDealt, bidding.maxBid);
@@ -31,6 +41,14 @@ export function BiddingPanel({ bidding, you, players, secondBatchDealt, onBid }:
         )}
         <div className="bidding-turn">{isYourTurn ? 'Your turn to bid' : `Waiting for ${turnName}...`}</div>
       </div>
+      {canDemandRedeal && (
+        <div className="redeal-offer">
+          <div className="redeal-note">Your four cards hold no points — you may throw the hand in.</div>
+          <button type="button" className="btn btn-danger btn-redeal" onClick={onRedeal}>
+            Demand a redeal
+          </button>
+        </div>
+      )}
       {isYourTurn && (
         <div className="bidding-actions">
           <button type="button" className="btn btn-pass" onClick={() => onBid('pass')}>

@@ -9,6 +9,7 @@ import {
   applyDouble,
   applyNextRound,
   applyPlay,
+  applyRedeal,
   applyRedouble,
   applyReveal,
   applyTrump,
@@ -89,6 +90,10 @@ io.on('connection', (socket) => {
 
   socket.on('game:bid', ({ value }: { value: 'pass' | number }) => {
     withRoom((room) => applyBid(room, data.seat as Seat, value));
+  });
+
+  socket.on('game:redeal', () => {
+    withRoom((room) => applyRedeal(room, data.seat as Seat));
   });
 
   socket.on('game:trump', ({ card }: { card: Card }) => {

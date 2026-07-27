@@ -86,6 +86,10 @@ export function useOnlineGame(name: string, roomCode: string) {
     socketRef.current.emit('game:bid', { value });
   }, []);
 
+  const redeal = useCallback(() => {
+    socketRef.current.emit('game:redeal', {});
+  }, []);
+
   const pickTrump = useCallback((card: Card) => {
     socketRef.current.emit('game:trump', { card });
   }, []);
@@ -110,5 +114,20 @@ export function useOnlineGame(name: string, roomCode: string) {
     socketRef.current.emit('game:nextRound', {});
   }, []);
 
-  return { status, error, seat, room, view, startGame, bid, pickTrump, callTrump, play, double, redouble, nextRound };
+  return {
+    status,
+    error,
+    seat,
+    room,
+    view,
+    startGame,
+    bid,
+    redeal,
+    pickTrump,
+    callTrump,
+    play,
+    double,
+    redouble,
+    nextRound,
+  };
 }

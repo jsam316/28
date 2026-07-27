@@ -11,6 +11,7 @@ import {
   decideBotAction,
   declareDouble,
   declareRedouble,
+  demandRedeal,
   getCurrentActorSeat,
   getPlayerView,
   placeBid,
@@ -63,6 +64,7 @@ export function useLocalGame(humanName: string, baseCardsPerTeam: number, diffic
         try {
           const view = getPlayerView(prev, seat);
           const action = decideBotAction(view, difficulty);
+          if (action.type === 'redeal') return demandRedeal(prev, seat);
           if (action.type === 'bid') return placeBid(prev, seat, action.value);
           if (action.type === 'trump') return chooseTrump(prev, seat, action.card);
           if (action.type === 'double') return declareDouble(prev, seat, action.accept);
@@ -89,6 +91,17 @@ export function useLocalGame(humanName: string, baseCardsPerTeam: number, diffic
     setState((prev) => {
       try {
         return placeBid(prev, HUMAN_SEAT, value);
+      } catch (err) {
+        console.error(err);
+        return prev;
+      }
+    });
+  }, []);
+
+  const redeal = useCallback(() => {
+    setState((prev) => {
+      try {
+        return demandRedeal(prev, HUMAN_SEAT);
       } catch (err) {
         console.error(err);
         return prev;
@@ -160,5 +173,18 @@ export function useLocalGame(humanName: string, baseCardsPerTeam: number, diffic
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [humanName, baseCardsPerTeam]);
 
-  return { state, view, humanSeat: HUMAN_SEAT, bid, pickTrump, callTrump, play, double, redouble, nextRound, restart };
+  return {
+    state,
+    view,
+    humanSeat: HUMAN_SEAT,
+    bid,
+    redeal,
+    pickTrump,
+    callTrump,
+    play,
+    double,
+    redouble,
+    nextRound,
+    restart,
+  };
 }

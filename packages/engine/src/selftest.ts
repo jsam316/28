@@ -5,10 +5,12 @@ import {
   type Seat,
   TOTAL_POINTS,
   bidTierStake,
+  cardPoints,
   chooseTrump,
   createGame,
   decideBotAction,
   declareDouble,
+  demandRedeal,
   declareRedouble,
   getCurrentActorSeat,
   getPlayerView,
@@ -46,6 +48,16 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
     const view = getPlayerView(s, seat);
     const action = decideBotAction(view, difficulty);
     if (s.phase === 'bidding') {
+      if (action.type === 'redeal') {
+        // Only the opener, only on a completely pointless first four cards.
+        if (seat !== ((s.dealerSeat + 1) % 4)) throw new Error('Non-opener demanded a redeal');
+        if (s.hands[seat].some((c) => cardPoints(c) > 0)) {
+          throw new Error('Redeal demanded with point cards in hand');
+        }
+        redealCount++;
+        s = demandRedeal(s, seat);
+        continue;
+      }
       if (action.type !== 'bid') throw new Error('Expected bid action');
       if (typeof action.value === 'number') {
         const required = minNextBid(s.bidding.currentBid, s.bidding.minBid, s.secondBatchDealt);
@@ -107,6 +119,7 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
 
 const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0, zeroStrips: 0 };
 const doubleStats = { doubles: 0, redoubles: 0 };
+let redealCount = 0;
 
 function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
   // A round can end early the moment the bid is mathematically lost, so it may
@@ -287,3 +300,4 @@ console.log(
     `${kunukkuStats.zeroStrips} rounds ending with a team stripped to zero.`
 );
 console.log(`Stake calls across all games: ${doubleStats.doubles} doubles, ${doubleStats.redoubles} redoubles.`);
+console.log(`Pointless-hand redeals demanded by the opener: ${redealCount}.`);
