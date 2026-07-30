@@ -1,4 +1,4 @@
-import { maxBidFor, minNextBid, type BiddingState, type Player, type Seat } from '@twenty-eight/engine';
+import { minNextBid, teamOf, type BiddingState, type Player, type Seat } from '@twenty-eight/engine';
 
 interface BiddingPanelProps {
   bidding: BiddingState;
@@ -20,10 +20,17 @@ export function BiddingPanel({
   onRedeal,
 }: BiddingPanelProps) {
   const isYourTurn = bidding.turnSeat === you && !bidding.passed[you];
-  const nextBid = minNextBid(bidding.currentBid, bidding.minBid, secondBatchDealt);
-  const roundMax = maxBidFor(secondBatchDealt, bidding.maxBid);
+  // The opener may not pass: with no bid or pass yet in round one, the only
+  // choices are to open at the minimum (or redeal a pointless hand).
+  const mustOpen = !secondBatchDealt && bidding.history.length === 0;
+  // Raising over your own partner's standing bid requires at least 20.
+  const raisingOverPartner =
+    bidding.currentBidderSeat !== null &&
+    bidding.currentBidderSeat !== you &&
+    teamOf(bidding.currentBidderSeat) === teamOf(you);
+  const nextBid = minNextBid(bidding.currentBid, bidding.minBid, secondBatchDealt, raisingOverPartner);
   const options: number[] = [];
-  for (let v = nextBid; v <= Math.min(roundMax, nextBid + 5); v++) options.push(v);
+  for (let v = nextBid; v <= Math.min(bidding.maxBid, nextBid + 5); v++) options.push(v);
 
   const turnName = players.find((p) => p.seat === bidding.turnSeat)?.name ?? '';
   const passLabel = secondBatchDealt && bidding.currentBidderSeat === you ? 'Hold my bid' : 'Pass';
@@ -31,7 +38,7 @@ export function BiddingPanel({
   return (
     <div className="bidding-panel">
       <div className="bidding-stage">
-        {secondBatchDealt ? 'Second round — bids of 24 to 28, or let it stand' : 'First round — bids of 14 to 23'}
+        {secondBatchDealt ? 'Second round — bids of 24 to 28, or let it stand' : 'First round — bidding opens at 14'}
         <div className="bidding-stakes-note">Stakes: 20–23 bids double (2 cards), 24+ quadruple (4 cards)</div>
       </div>
       <div className="bidding-status">
@@ -49,19 +56,27 @@ export function BiddingPanel({
           </button>
         </div>
       )}
+      {isYourTurn && mustOpen && (
+        <div className="bidding-stakes-note">You open the bidding — you must bid (no passing).</div>
+      )}
+      {isYourTurn && raisingOverPartner && !secondBatchDealt && (
+        <div className="bidding-stakes-note">Raising over your partner — minimum bid 20.</div>
+      )}
       {isYourTurn && (
         <div className="bidding-actions">
-          <button type="button" className="btn btn-pass" onClick={() => onBid('pass')}>
-            {passLabel}
-          </button>
+          {!mustOpen && (
+            <button type="button" className="btn btn-pass" onClick={() => onBid('pass')}>
+              {passLabel}
+            </button>
+          )}
           {options.map((v) => (
             <button key={v} type="button" className="btn btn-bid" onClick={() => onBid(v)}>
               Bid {v}
             </button>
           ))}
-          {roundMax > nextBid + 5 && (
-            <button type="button" className="btn btn-bid" onClick={() => onBid(roundMax)}>
-              Bid {roundMax} (max)
+          {bidding.maxBid > nextBid + 5 && (
+            <button type="button" className="btn btn-bid" onClick={() => onBid(bidding.maxBid)}>
+              Bid {bidding.maxBid} (max)
             </button>
           )}
         </div>

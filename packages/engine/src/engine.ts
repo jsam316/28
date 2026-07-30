@@ -1,5 +1,5 @@
 import { buildDeck, shuffle } from './deck.js';
-import { bidTierStake, legalCardsFor, maxBidFor, minNextBid, resolveTrick } from './rules.js';
+import { bidTierStake, legalCardsFor, minNextBid, resolveTrick } from './rules.js';
 import {
   type BiddingState,
   type Card,
@@ -88,6 +88,7 @@ function dealRound(
     stakeMultiplier: 1,
     doubled: false,
     redoubled: false,
+    mustTrumpSeat: null,
     roundNumber,
     history,
     log: [`Round ${roundNumber}: cards dealt. ${playerName(players, openingBidder)} opens the bidding.`],
@@ -150,17 +151,14 @@ export function canDemandRedeal(state: GameState, seat: Seat): boolean {
   return state.hands[seat].every((c) => cardPoints(c) === 0);
 }
 
-export function demandRedeal(state: GameState, seat: Seat, options: GameOptions = {}): GameState {
-  if (!canDemandRedeal(state, seat)) {
-    throw new Error('You cannot demand a redeal right now');
-  }
+// Same dealer deals the same round again; the match state carries over.
+function redealRound(state: GameState, reason: string, options: GameOptions = {}): GameState {
   const opts: Required<GameOptions> = {
     baseCardsPerTeam: state.totalBaseCards / 2,
     minBid: state.bidding.minBid,
     maxBid: state.bidding.maxBid,
     rng: options.rng ?? Math.random,
   };
-  // Same dealer deals the same round again; the match state carries over.
   const fresh = dealRound(
     state.players,
     state.dealerSeat,
@@ -171,14 +169,18 @@ export function demandRedeal(state: GameState, seat: Seat, options: GameOptions 
     state.history,
     state.kunukku
   );
-  return {
-    ...fresh,
-    log: [
-      ...state.log,
-      `${playerName(state.players, seat)} has no point cards and demands a redeal.`,
-      ...fresh.log,
-    ],
-  };
+  return { ...fresh, log: [...state.log, reason, ...fresh.log] };
+}
+
+export function demandRedeal(state: GameState, seat: Seat, options: GameOptions = {}): GameState {
+  if (!canDemandRedeal(state, seat)) {
+    throw new Error('You cannot demand a redeal right now');
+  }
+  return redealRound(
+    state,
+    `${playerName(state.players, seat)} has no point cards and demands a redeal.`,
+    options
+  );
 }
 
 function cloneLog(state: GameState, ...lines: string[]): string[] {
@@ -203,15 +205,29 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
   const bidding = structuredClone(state.bidding);
 
   if (action === 'pass') {
+    // The opener may not pass: they must open at the minimum bid (their only
+    // alternative is the pointless-hand redeal, handled separately).
+    if (!state.secondBatchDealt && bidding.history.length === 0) {
+      throw new Error(`The opening bidder must bid at least ${bidding.minBid}`);
+    }
     bidding.passed[seat] = true;
     bidding.history.push({ seat, action });
     return advanceBidding({ ...state, bidding }, [`${playerName(state.players, seat)} passes.`]);
   }
 
-  const minAllowed = minNextBid(bidding.currentBid, bidding.minBid, state.secondBatchDealt);
-  const maxAllowed = maxBidFor(state.secondBatchDealt, bidding.maxBid);
-  if (action < minAllowed) throw new Error(`Bid must be at least ${minAllowed}`);
-  if (action > maxAllowed) throw new Error(`Bid cannot exceed ${maxAllowed}`);
+  const raisingOverPartner =
+    bidding.currentBidderSeat !== null &&
+    bidding.currentBidderSeat !== seat &&
+    teamOf(bidding.currentBidderSeat) === teamOf(seat);
+  const minAllowed = minNextBid(bidding.currentBid, bidding.minBid, state.secondBatchDealt, raisingOverPartner);
+  if (action < minAllowed) {
+    throw new Error(
+      raisingOverPartner && action <= bidding.maxBid
+        ? `Raising over your partner requires a bid of at least ${minAllowed}`
+        : `Bid must be at least ${minAllowed}`
+    );
+  }
+  if (action > bidding.maxBid) throw new Error(`Bid cannot exceed ${bidding.maxBid}`);
   bidding.currentBid = action;
   bidding.currentBidderSeat = seat;
   bidding.history.push({ seat, action });
@@ -233,17 +249,8 @@ function advanceBidding(state: GameState, log: string[]): GameState {
   const bidding = structuredClone(state.bidding);
   const remaining: Seat[] = [0, 1, 2, 3].filter((s) => !bidding.passed[s as Seat]) as Seat[];
 
-  if (remaining.length === 0 && bidding.currentBidderSeat === null) {
-    // Round-one all-pass: the dealer is forced to take the minimum bid and must
-    // still set aside a trump before play.
-    bidding.currentBid = bidding.minBid;
-    bidding.currentBidderSeat = state.dealerSeat;
-    log.push(
-      `Everyone passed. ${playerName(state.players, state.dealerSeat)} is forced to take the bid at ${bidding.minBid} and sets a trump aside.`
-    );
-    return { ...state, bidding, phase: 'trump_selection', log: cloneLog(state, ...log) };
-  }
-
+  // The opener is obliged to bid, so by the time anyone can pass a bid always
+  // stands - a round can never close without a bidder.
   const closed =
     remaining.length === 0 || (remaining.length === 1 && bidding.currentBidderSeat !== null);
   if (closed) {
@@ -264,6 +271,19 @@ function advanceBidding(state: GameState, log: string[]): GameState {
 function concludeBidding(state: GameState, log: string[]): GameState {
   if (!state.secondBatchDealt) {
     const { hands, stock } = dealSecondBatch(state);
+
+    // If any player's eight-card hand holds all four Jacks, they must show
+    // them and the whole hand is redealt by the same dealer.
+    for (const seat of [0, 1, 2, 3] as Seat[]) {
+      const jacks = hands[seat].filter((c) => c.rank === 'J').length;
+      if (jacks === 4) {
+        return redealRound(
+          { ...state, hands, stock, log: cloneLog(state, ...log) },
+          `${playerName(state.players, seat)} shows all four Jacks — the hand is redealt.`
+        );
+      }
+    }
+
     const reopened: BiddingState = {
       ...state.bidding,
       passed: [false, false, false, false],
@@ -353,11 +373,27 @@ export function requestTrumpReveal(state: GameState, seat: Seat): GameState {
   return {
     ...state,
     trump: { ...state.trump, revealed: true },
+    // Having called for the trump, the caller must play a trump to this trick
+    // if they hold one.
+    mustTrumpSeat: seat,
     log: cloneLog(
       state,
       `${playerName(state.players, seat)} calls for trump. The trump card is ${cardLabel}.`
     ),
   };
+}
+
+// The cards a seat may legally play to the current trick: follow suit if
+// possible (the concealed set-aside trump neither plays nor forces a follow),
+// and a player who just called for the trump must trump if able.
+function legalPlaysFor(state: GameState, seat: Seat): Card[] {
+  const ledSuit = state.trick.cards[0]?.card.suit ?? null;
+  const base = legalCardsFor(playableHand(state, seat), ledSuit);
+  if (state.mustTrumpSeat === seat && state.trump.revealed && state.trump.suit) {
+    const trumps = base.filter((c) => c.suit === state.trump.suit);
+    if (trumps.length > 0) return trumps;
+  }
+  return base;
 }
 
 export function playCard(state: GameState, seat: Seat, card: Card): GameState {
@@ -370,36 +406,57 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
   const idx = hand.findIndex((c) => cardId(c) === cardId(card));
   if (idx === -1) throw new Error('Card not in hand');
 
-  const ledSuit = state.trick.cards[0]?.card.suit ?? null;
-  // Validate against the playable hand so the bidder's concealed trump is held
-  // back (and does not force a follow) exactly as getLegalCards reports.
-  const legal = legalCardsFor(playableHand(state, seat), ledSuit);
+  const legal = legalPlaysFor(state, seat);
   if (!legal.some((c) => cardId(c) === cardId(card))) {
-    throw new Error('Illegal card: must follow suit if possible');
+    throw new Error(
+      state.mustTrumpSeat === seat
+        ? 'Having called for the trump, you must play a trump'
+        : 'Illegal card: must follow suit if possible'
+    );
+  }
+
+  let log: string[] = [];
+
+  // If nobody ever called for the trump, the bidder's last card is the
+  // set-aside trump itself - playing it exposes it, and from that moment it
+  // counts as a trump.
+  let trump = state.trump;
+  if (
+    !trump.revealed &&
+    trump.card &&
+    trump.chosenBySeat === seat &&
+    cardId(card) === cardId(trump.card)
+  ) {
+    trump = { ...trump, revealed: true };
+    log.push(`${playerName(state.players, seat)} is forced to expose the trump: ${card.rank}${card.suit}.`);
   }
 
   const hands = structuredClone(state.hands) as GameState['hands'];
   hands[seat] = hands[seat].filter((c) => cardId(c) !== cardId(card));
 
   const trick = structuredClone(state.trick);
-  trick.cards.push({ seat, card });
+  // Record whether the trump was already exposed when this card was played -
+  // a trump-suit card played before the exposure never counts as a trump.
+  trick.cards.push({ seat, card, playedAfterReveal: trump.revealed });
 
-  let log: string[] = [`${playerName(state.players, seat)} plays ${card.rank}${card.suit}.`];
+  log.push(`${playerName(state.players, seat)} plays ${card.rank}${card.suit}.`);
+
+  // The must-trump obligation only covers the caller's own play.
+  const mustTrumpSeat = state.mustTrumpSeat === seat ? null : state.mustTrumpSeat;
 
   if (trick.cards.length < 4) {
-    return { ...state, hands, trick, log: cloneLog(state, ...log) };
+    return { ...state, hands, trick, trump, mustTrumpSeat, log: cloneLog(state, ...log) };
   }
 
-  // Trick complete.
-  // Trump only has power once it has been revealed; a concealed trump card is
-  // just an ordinary off-suit discard and cannot win the kai.
-  const activeTrump = state.trump.revealed ? state.trump.suit : null;
+  // Trick complete. Trump only has power once it has been revealed, and only
+  // for the cards played after the reveal (resolveTrick checks per card).
+  const activeTrump = trump.revealed ? trump.suit : null;
   const completed = resolveTrick(trick.cards, activeTrump, trick.trickNumber);
   const completedTricks = [...state.completedTricks, completed];
   log.push(`${playerName(state.players, completed.winnerSeat)} wins the kai (${completed.points} pts).`);
 
   if (completedTricks.length === 8) {
-    return finishRound({ ...state, hands, trick, completedTricks, log: cloneLog(state, ...log) });
+    return finishRound({ ...state, hands, trick, trump, mustTrumpSeat, completedTricks, log: cloneLog(state, ...log) });
   }
 
   // End the round the moment the outcome is settled: if the defending team has
@@ -415,11 +472,11 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
     log.push(
       `Defenders have ${defenderPoints} pts — the bid of ${bid} can no longer be made. The round ends early.`
     );
-    return finishRound({ ...state, hands, trick, completedTricks, log: cloneLog(state, ...log) });
+    return finishRound({ ...state, hands, trick, trump, mustTrumpSeat, completedTricks, log: cloneLog(state, ...log) });
   }
 
   const newTrick = { leadSeat: completed.winnerSeat, cards: [], trickNumber: trick.trickNumber + 1 };
-  return { ...state, hands, trick: newTrick, completedTricks, log: cloneLog(state, ...log) };
+  return { ...state, hands, trick: newTrick, trump, mustTrumpSeat, completedTricks, log: cloneLog(state, ...log) };
 }
 
 function finishRound(state: GameState): GameState {
@@ -595,8 +652,7 @@ export function getLegalCards(state: GameState, seat: Seat): Card[] {
   const expectedSeat =
     state.trick.cards.length === 0 ? state.trick.leadSeat : nextSeat(state.trick.cards[state.trick.cards.length - 1].seat);
   if (expectedSeat !== seat) return [];
-  const ledSuit = state.trick.cards[0]?.card.suit ?? null;
-  return legalCardsFor(playableHand(state, seat), ledSuit);
+  return legalPlaysFor(state, seat);
 }
 
 export function canRequestTrumpReveal(state: GameState, seat: Seat): boolean {

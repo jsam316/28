@@ -1,4 +1,4 @@
-import { maxBidFor, minNextBid } from './rules.js';
+import { minNextBid } from './rules.js';
 import {
   type Card,
   type PlayerView,
@@ -70,10 +70,22 @@ function decideBid(view: PlayerView, difficulty: BotDifficulty): BotAction {
   // rather than folding into a passive hand as usual.
   const redemptionBonus = view.kunukku[view.you] > 0 ? 6 : 0;
   const maxWillingBid = Math.round(profile.bidBase + score * 0.65 + jitter + redemptionBonus);
-  const { currentBid, minBid, maxBid } = view.bidding;
-  const roundMax = maxBidFor(view.secondBatchDealt, maxBid);
-  const nextBid = minNextBid(currentBid, minBid, view.secondBatchDealt);
-  if (nextBid > roundMax || maxWillingBid < nextBid) {
+  const { currentBid, currentBidderSeat, minBid, maxBid } = view.bidding;
+
+  // The opener cannot pass: with no bid on the table in round one, open at the
+  // minimum however poor the hand (a pointless hand takes the redeal path
+  // before this is ever reached).
+  if (!view.secondBatchDealt && view.bidding.history.length === 0) {
+    return { type: 'bid', value: minBid };
+  }
+
+  // Raising over your own partner's standing bid requires at least 20.
+  const raisingOverPartner =
+    currentBidderSeat !== null &&
+    currentBidderSeat !== view.you &&
+    teamOf(currentBidderSeat as 0 | 1 | 2 | 3) === teamOf(view.you as 0 | 1 | 2 | 3);
+  const nextBid = minNextBid(currentBid, minBid, view.secondBatchDealt, raisingOverPartner);
+  if (nextBid > maxBid || maxWillingBid < nextBid) {
     return { type: 'bid', value: 'pass' };
   }
   return { type: 'bid', value: nextBid };
@@ -133,11 +145,15 @@ function decideTrump(view: PlayerView, difficulty: BotDifficulty): BotAction {
 }
 
 function currentBestPlay(
-  cards: { seat: number; card: Card }[],
+  cards: { seat: number; card: Card; playedAfterReveal?: boolean }[],
   ledSuit: Suit,
-  knownTrumpSuit: Suit | null
+  activeTrumpSuit: Suit | null
 ): { seat: number; card: Card } {
-  const trumpPlays = knownTrumpSuit ? cards.filter((pc) => pc.card.suit === knownTrumpSuit) : [];
+  // Only cards played after the exposure count as trumps - a trump-suit card
+  // that hit the table before the call is just a discard.
+  const trumpPlays = activeTrumpSuit
+    ? cards.filter((pc) => pc.card.suit === activeTrumpSuit && pc.playedAfterReveal)
+    : [];
   const contenders = trumpPlays.length > 0 ? trumpPlays : cards.filter((pc) => pc.card.suit === ledSuit);
   let winner = contenders[0];
   for (const pc of contenders) {

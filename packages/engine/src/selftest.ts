@@ -59,13 +59,23 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
         continue;
       }
       if (action.type !== 'bid') throw new Error('Expected bid action');
+      // The opener may never pass in round one.
+      if (action.value === 'pass' && !s.secondBatchDealt && s.bidding.history.length === 0) {
+        throw new Error('Opener tried to pass in round one');
+      }
       if (typeof action.value === 'number') {
-        const required = minNextBid(s.bidding.currentBid, s.bidding.minBid, s.secondBatchDealt);
-        const roundMax = s.secondBatchDealt ? s.bidding.maxBid : 23;
-        if (action.value < required || action.value > roundMax) {
+        const overPartner =
+          s.bidding.currentBidderSeat !== null &&
+          s.bidding.currentBidderSeat !== seat &&
+          s.bidding.currentBidderSeat % 2 === seat % 2;
+        const required = minNextBid(s.bidding.currentBid, s.bidding.minBid, s.secondBatchDealt, overPartner);
+        if (action.value < required || action.value > s.bidding.maxBid) {
           throw new Error(
-            `Bot bid ${action.value} outside [${required}, ${roundMax}] (secondBatchDealt=${s.secondBatchDealt})`
+            `Bot bid ${action.value} outside [${required}, ${s.bidding.maxBid}] (secondBatchDealt=${s.secondBatchDealt}, overPartner=${overPartner})`
           );
+        }
+        if (overPartner && action.value < 20) {
+          throw new Error(`Bot raised over its partner with ${action.value} (< 20)`);
         }
       }
       s = placeBid(s, seat, action.value);
@@ -87,6 +97,7 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
   }
 
   guard = 0;
+  let pendingMustTrump: Seat | null = null;
   while (s.phase === 'playing') {
     guard++;
     if (guard > 500) throw new Error('Playing stuck in a loop');
@@ -95,6 +106,8 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
     const action = decideBotAction(view, difficulty);
     if (action.type === 'reveal') {
       s = requestTrumpReveal(s, seat);
+      pendingMustTrump = seat;
+      revealStats.calls++;
     } else if (action.type === 'play') {
       // The bidder must not be able to play their concealed trump card unless
       // it is the only legal card they have left.
@@ -108,9 +121,32 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
       ) {
         throw new Error('Bidder played the concealed trump card while other legal cards were available');
       }
+      // Having called for the trump, the caller must trump if able.
+      if (pendingMustTrump === seat) {
+        const heldTrump = s.hands[seat].some((c) => c.suit === s.trump.suit);
+        if (heldTrump && action.card.suit !== s.trump.suit) {
+          throw new Error('Caller held a trump but did not play one after calling for the trump');
+        }
+        if (heldTrump) revealStats.forcedTrumps++;
+        pendingMustTrump = null;
+      }
       s = playCard(s, seat, action.card);
     } else {
       throw new Error(`Unexpected action ${action.type} during play`);
+    }
+  }
+
+  // Per-card trump status: in every completed kai, an off-suit winner must be
+  // a trump-suit card that was played after the exposure.
+  for (const t of s.completedTricks) {
+    const ledSuit = t.cards[0].card.suit;
+    const winner = t.cards.find((pc) => pc.seat === t.winnerSeat)!;
+    if (winner.card.suit !== ledSuit) {
+      if (winner.card.suit !== s.trump.suit || !winner.playedAfterReveal) {
+        throw new Error(
+          `Kai ${t.trickNumber} won off-suit by ${winner.card.rank}${winner.card.suit} without a post-reveal trump`
+        );
+      }
     }
   }
 
@@ -119,7 +155,9 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
 
 const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0, zeroStrips: 0 };
 const doubleStats = { doubles: 0, redoubles: 0 };
+const revealStats = { calls: 0, forcedTrumps: 0 };
 let redealCount = 0;
+let fourJacksRedeals = 0;
 
 function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
   // A round can end early the moment the bid is mathematically lost, so it may
@@ -244,6 +282,7 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
         );
       }
     }
+    fourJacksRedeals += state.log.filter((l) => l.includes('four Jacks')).length;
     const lastResult = state.history[state.history.length - 1];
     kunukkuStats.marked += lastResult.kunukkuMarked.length;
     kunukkuStats.cleared += lastResult.kunukkuCleared.length;
@@ -300,4 +339,7 @@ console.log(
     `${kunukkuStats.zeroStrips} rounds ending with a team stripped to zero.`
 );
 console.log(`Stake calls across all games: ${doubleStats.doubles} doubles, ${doubleStats.redoubles} redoubles.`);
-console.log(`Pointless-hand redeals demanded by the opener: ${redealCount}.`);
+console.log(`Pointless-hand redeals demanded by the opener: ${redealCount}. Four-Jacks redeals: ${fourJacksRedeals}.`);
+console.log(
+  `Trump calls: ${revealStats.calls}, of which the caller held (and was forced to play) a trump: ${revealStats.forcedTrumps}.`
+);
