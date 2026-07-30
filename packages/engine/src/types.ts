@@ -86,6 +86,10 @@ export interface TrumpState {
 export interface PlayedCard {
   seat: Seat;
   card: Card;
+  // Whether the trump had been exposed by the time this card hit the table.
+  // A trump-suit card played before the exposure does not count as a trump,
+  // even for a trick that ends after the exposure.
+  playedAfterReveal?: boolean;
 }
 
 export interface TrickState {
@@ -145,6 +149,9 @@ export interface GameState {
   stakeMultiplier: 1 | 2 | 4;
   doubled: boolean;
   redoubled: boolean;
+  // The seat that just called for the trump to be exposed and must therefore
+  // play a trump to the current trick if it holds one.
+  mustTrumpSeat: Seat | null;
   roundNumber: number;
   history: RoundResult[];
   log: string[];
