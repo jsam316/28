@@ -9,9 +9,7 @@ import {
   chooseTrump,
   createGame,
   decideBotAction,
-  declareDouble,
   demandRedeal,
-  declareRedouble,
   getCurrentActorSeat,
   getPlayerView,
   minNextBid,
@@ -36,12 +34,7 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
   let guard = 0;
   // Bidding now spans two rounds with trump placement (and possibly a re-place)
   // in between, so drive every pre-play phase from a single loop.
-  while (
-    s.phase === 'bidding' ||
-    s.phase === 'trump_selection' ||
-    s.phase === 'doubling' ||
-    s.phase === 'redoubling'
-  ) {
+  while (s.phase === 'bidding' || s.phase === 'trump_selection') {
     guard++;
     if (guard > 300) throw new Error('Pre-play phases stuck in a loop');
     const seat = getCurrentActorSeat(s) as Seat;
@@ -79,20 +72,12 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
         }
       }
       s = placeBid(s, seat, action.value);
-    } else if (s.phase === 'trump_selection') {
+    } else {
       if (action.type !== 'trump') throw new Error('Expected trump action');
       if (!s.hands[seat].some((c) => `${c.rank}${c.suit}` === `${action.card.rank}${action.card.suit}`)) {
         throw new Error('Bot chose a trump card not in its hand');
       }
       s = chooseTrump(s, seat, action.card);
-    } else if (s.phase === 'doubling') {
-      if (action.type !== 'double') throw new Error('Expected double action');
-      if (action.accept) doubleStats.doubles++;
-      s = declareDouble(s, seat, action.accept);
-    } else {
-      if (action.type !== 'redouble') throw new Error('Expected redouble action');
-      if (action.accept) doubleStats.redoubles++;
-      s = declareRedouble(s, seat, action.accept);
     }
   }
 
@@ -154,7 +139,6 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
 }
 
 const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0, zeroStrips: 0 };
-const doubleStats = { doubles: 0, redoubles: 0 };
 const revealStats = { calls: 0, forcedTrumps: 0 };
 let redealCount = 0;
 let fourJacksRedeals = 0;
@@ -288,10 +272,7 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     kunukkuStats.cleared += lastResult.kunukkuCleared.length;
     kunukkuStats.doubled += lastResult.kunukkuDoubled.length;
     if (lastResult.kunukkuBlockedWinner !== null) kunukkuStats.blockedWins++;
-    if (![1, 2, 4].includes(lastResult.stakeMultiplier)) {
-      throw new Error(`Invalid stake multiplier ${lastResult.stakeMultiplier}`);
-    }
-    const fullStake = bidTierStake(lastResult.bid) * lastResult.stakeMultiplier;
+    const fullStake = bidTierStake(lastResult.bid);
     // The loser hands over the full staked amount, capped only by however many
     // base cards they had before the round.
     const loserTeam = lastResult.roundWinnerTeam === 0 ? 1 : 0;
@@ -299,11 +280,8 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     const expectedTransfer = Math.min(fullStake, loserBefore);
     if (lastResult.cardsTransferred !== expectedTransfer) {
       throw new Error(
-        `Transferred ${lastResult.cardsTransferred} cards, expected ${expectedTransfer} (bid ${lastResult.bid}, tier×mult ${fullStake}, loser had ${loserBefore})`
+        `Transferred ${lastResult.cardsTransferred} cards, expected ${expectedTransfer} (bid ${lastResult.bid}, tier stake ${fullStake}, loser had ${loserBefore})`
       );
-    }
-    if (lastResult.redoubled && !lastResult.doubled) {
-      throw new Error('Redoubled round without a double');
     }
     if (lastResult.baseCardsAfter[0] === 0 || lastResult.baseCardsAfter[1] === 0) {
       kunukkuStats.zeroStrips++;
@@ -338,7 +316,6 @@ console.log(
     `${kunukkuStats.doubled} second clips, ${kunukkuStats.blockedWins} blocked-win events, ` +
     `${kunukkuStats.zeroStrips} rounds ending with a team stripped to zero.`
 );
-console.log(`Stake calls across all games: ${doubleStats.doubles} doubles, ${doubleStats.redoubles} redoubles.`);
 console.log(`Pointless-hand redeals demanded by the opener: ${redealCount}. Four-Jacks redeals: ${fourJacksRedeals}.`);
 console.log(
   `Trump calls: ${revealStats.calls}, of which the caller held (and was forced to play) a trump: ${revealStats.forcedTrumps}.`

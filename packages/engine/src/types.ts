@@ -60,8 +60,6 @@ export type Phase =
   | 'lobby'
   | 'bidding'
   | 'trump_selection'
-  | 'doubling'
-  | 'redoubling'
   | 'playing'
   | 'round_end'
   | 'game_end';
@@ -112,9 +110,6 @@ export interface RoundResult {
   pointsCaptured: [number, number];
   made: boolean;
   kappu: boolean; // bidding team won all 8 tricks
-  doubled: boolean; // defenders doubled the stakes after trump was named
-  redoubled: boolean; // bidding team answered the double with a redouble
-  stakeMultiplier: number; // 1 normal, 2 doubled, 4 redoubled
   roundWinnerTeam: 0 | 1; // biddingTeam if the bid was made, the defenders otherwise
   cardsTransferred: number; // base cards handed from the losing team to the winning team
   baseCardsAfter: [number, number]; // base-card tallies once the transfer is applied
@@ -144,11 +139,6 @@ export interface GameState {
   // lost round, and the match is won by collecting all of them.
   baseCards: [number, number];
   totalBaseCards: number;
-  // Stake state for the current round: defenders may double after trump is
-  // named, the bidding team may answer with a redouble (1 -> 2 -> 4 cards).
-  stakeMultiplier: 1 | 2 | 4;
-  doubled: boolean;
-  redoubled: boolean;
   // The seat that just called for the trump to be exposed and must therefore
   // play a trump to the current trick if it holds one.
   mustTrumpSeat: Seat | null;
@@ -179,9 +169,6 @@ export interface PlayerView {
   completedTricks: CompletedTrick[];
   baseCards: [number, number];
   totalBaseCards: number;
-  stakeMultiplier: 1 | 2 | 4;
-  doubled: boolean;
-  redoubled: boolean;
   roundNumber: number;
   history: RoundResult[];
   log: string[];

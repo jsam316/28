@@ -23,7 +23,7 @@ function LocalGame({
   difficulty: BotDifficulty;
   onExit: () => void;
 }) {
-  const { view, bid, redeal, pickTrump, callTrump, play, double, redouble, nextRound, restart } = useLocalGame(
+  const { view, bid, redeal, pickTrump, callTrump, play, nextRound, restart } = useLocalGame(
     name,
     baseCardsPerTeam,
     difficulty
@@ -31,7 +31,7 @@ function LocalGame({
   return (
     <GameScreen
       view={view}
-      actions={{ bid, redeal, pickTrump, callTrump, play, double, redouble, nextRound, restart }}
+      actions={{ bid, redeal, pickTrump, callTrump, play, nextRound, restart }}
       onExit={onExit}
     />
   );

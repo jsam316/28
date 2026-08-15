@@ -21,8 +21,6 @@ export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
     pickTrump,
     callTrump,
     play,
-    double,
-    redouble,
     nextRound,
   } = useOnlineGame(name, roomCode);
   const [baseCards, setBaseCards] = useState(6);
@@ -99,7 +97,7 @@ export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
   return (
     <GameScreen
       view={view}
-      actions={{ bid, redeal, pickTrump, callTrump, play, double, redouble, nextRound }}
+      actions={{ bid, redeal, pickTrump, callTrump, play, nextRound }}
       waitingForHostMessage="Waiting for a player to start the next round..."
       onExit={onExit}
       exitLabel="Leave room"

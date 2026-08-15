@@ -30,11 +30,9 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
               : 'Bid made!'
             : `Bid failed — needed ${result.bid}, captured only ${result.pointsCaptured[result.biddingTeam]}.`}
         </p>
-        {(result.stakeMultiplier > 1 || result.bid >= 20) && (
+        {result.bid >= 20 && (
           <p className="result-failed">
-            Raised stakes this round:
-            {result.bid >= 24 ? ' 24+ bid ×4' : result.bid >= 20 ? ' 20+ bid ×2' : ''}
-            {result.doubled ? (result.redoubled ? ' · REDOUBLED ×4' : ' · DOUBLED ×2') : ''}
+            Stakes this round: {result.bid >= 24 ? '24+ bid — quadruple (×4)' : '20+ bid — double (×2)'}
           </p>
         )}
         <p>

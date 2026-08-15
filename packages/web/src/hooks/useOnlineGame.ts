@@ -102,14 +102,6 @@ export function useOnlineGame(name: string, roomCode: string) {
     socketRef.current.emit('game:play', { card });
   }, []);
 
-  const double = useCallback((accept: boolean) => {
-    socketRef.current.emit('game:double', { accept });
-  }, []);
-
-  const redouble = useCallback((accept: boolean) => {
-    socketRef.current.emit('game:redouble', { accept });
-  }, []);
-
   const nextRound = useCallback(() => {
     socketRef.current.emit('game:nextRound', {});
   }, []);
@@ -126,8 +118,6 @@ export function useOnlineGame(name: string, roomCode: string) {
     pickTrump,
     callTrump,
     play,
-    double,
-    redouble,
     nextRound,
   };
 }
