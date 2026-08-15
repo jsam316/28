@@ -34,9 +34,9 @@ export function GameEndOverlay({ winner, baseCards, totalBaseCards, lastResult, 
                   : 'Bid made!'
                 : `Bid failed — needed ${lastResult.bid}, captured only ${lastResult.pointsCaptured[lastResult.biddingTeam]}.`}
             </p>
-            {lastResult.stakeMultiplier > 1 && (
+            {lastResult.bid >= 20 && (
               <p className="result-failed">
-                Stakes were {lastResult.redoubled ? 'REDOUBLED (×4)' : 'DOUBLED (×2)'} on the final round.
+                Stakes on the final round: {lastResult.bid >= 24 ? '24+ bid — quadruple (×4)' : '20+ bid — double (×2)'}
               </p>
             )}
             {lastResult.kunukkuCleared.length > 0 && (

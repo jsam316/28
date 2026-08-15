@@ -13,8 +13,6 @@ export type BotAction =
   | { type: 'bid'; value: 'pass' | number }
   | { type: 'redeal' }
   | { type: 'trump'; card: Card }
-  | { type: 'double'; accept: boolean }
-  | { type: 'redouble'; accept: boolean }
   | { type: 'reveal' }
   | { type: 'play'; card: Card };
 
@@ -89,39 +87,6 @@ function decideBid(view: PlayerView, difficulty: BotDifficulty): BotAction {
     return { type: 'bid', value: 'pass' };
   }
   return { type: 'bid', value: nextBid };
-}
-
-function teamClips(view: PlayerView): number {
-  const partner = ((view.you + 2) % 4) as 0 | 1 | 2 | 3;
-  return view.kunukku[view.you] + view.kunukku[partner];
-}
-
-// Defender's call: double when the bidder looks overstretched and our hand
-// is strong - or out of desperation, since winning a doubled round sheds
-// two kunukku clips at once.
-function decideDouble(view: PlayerView, difficulty: BotDifficulty): BotAction {
-  const profile = DIFFICULTY_PROFILES[difficulty];
-  if (profile.mistakeChance > 0 && Math.random() < profile.mistakeChance) {
-    return { type: 'double', accept: Math.random() < 0.5 };
-  }
-  const { score } = bestSuit(view.hand);
-  const bid = view.bidding.currentBid ?? 0;
-  const desperate = teamClips(view) > 0;
-  const strongEnough = score >= 24 && bid >= 23;
-  const desperationShot = desperate && score >= 18;
-  return { type: 'double', accept: strongEnough || desperationShot };
-}
-
-// Bidder's answer to a double: redouble only with a monster hand, or when
-// drowning in clips - a redoubled win wipes the whole slate clean.
-function decideRedouble(view: PlayerView, difficulty: BotDifficulty): BotAction {
-  const profile = DIFFICULTY_PROFILES[difficulty];
-  if (profile.mistakeChance > 0 && Math.random() < profile.mistakeChance) {
-    return { type: 'redouble', accept: Math.random() < 0.3 };
-  }
-  const { score } = bestSuit(view.hand);
-  const desperate = teamClips(view) >= 2;
-  return { type: 'redouble', accept: score >= 30 || (desperate && score >= 22) };
 }
 
 // Set aside the LOWEST card of the chosen trump suit, keeping the high trumps
@@ -270,8 +235,6 @@ export function decideBotAction(view: PlayerView, difficulty: BotDifficulty = 'r
     return decideBid(view, difficulty);
   }
   if (view.phase === 'trump_selection') return decideTrump(view, difficulty);
-  if (view.phase === 'doubling') return decideDouble(view, difficulty);
-  if (view.phase === 'redoubling') return decideRedouble(view, difficulty);
   if (view.phase === 'playing') {
     if (view.canRequestTrumpReveal && wantsTrumpReveal(view)) {
       return { type: 'reveal' };

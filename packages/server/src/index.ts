@@ -6,11 +6,9 @@ import type { Card, Seat } from '@twenty-eight/engine';
 import { cleanupStaleRooms, findOpenSeat, getOrCreateRoom, touch } from './rooms.js';
 import {
   applyBid,
-  applyDouble,
   applyNextRound,
   applyPlay,
   applyRedeal,
-  applyRedouble,
   applyReveal,
   applyTrump,
   broadcastRoom,
@@ -98,14 +96,6 @@ io.on('connection', (socket) => {
 
   socket.on('game:trump', ({ card }: { card: Card }) => {
     withRoom((room) => applyTrump(room, data.seat as Seat, card));
-  });
-
-  socket.on('game:double', ({ accept }: { accept: boolean }) => {
-    withRoom((room) => applyDouble(room, data.seat as Seat, Boolean(accept)));
-  });
-
-  socket.on('game:redouble', ({ accept }: { accept: boolean }) => {
-    withRoom((room) => applyRedouble(room, data.seat as Seat, Boolean(accept)));
   });
 
   socket.on('game:revealTrump', () => {

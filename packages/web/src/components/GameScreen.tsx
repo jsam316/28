@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getCurrentActorSeat, nextSeat, type Card, type PlayerView, type Seat } from '@twenty-eight/engine';
+import { bidTierStake, getCurrentActorSeat, type Card, type PlayerView, type Seat } from '@twenty-eight/engine';
 import { PlayerSeat, seatPosition } from './PlayerSeat';
 import { TrickArea, TRICK_ANIM_TOTAL_MS } from './TrickArea';
 import { Hand } from './Hand';
@@ -18,8 +18,6 @@ export interface GameScreenActions {
   redeal: () => void;
   callTrump: () => void;
   play: (card: Card) => void;
-  double: (accept: boolean) => void;
-  redouble: (accept: boolean) => void;
   nextRound?: () => void;
   restart?: () => void;
 }
@@ -109,7 +107,7 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
       <Scoreboard
         baseCards={view.baseCards}
         totalBaseCards={view.totalBaseCards}
-        stakeMultiplier={view.stakeMultiplier}
+        stakeMultiplier={view.bidding.currentBid !== null ? bidTierStake(view.bidding.currentBid) : 1}
         roundNumber={view.roundNumber}
         trumpSuit={view.trump.suit}
         trumpConcealed={view.trump.concealedForYou}
@@ -173,61 +171,6 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
             {handPreview}
           </>
         )}
-
-        {view.phase === 'doubling' &&
-          (you === nextSeat(view.bidding.currentBidderSeat as Seat) ? (
-            <>
-              <div className="stake-panel">
-                <div className="stake-prompt">
-                  {players.find((p) => p.seat === view.bidding.currentBidderSeat)?.name} holds the bid at{' '}
-                  {view.bidding.currentBid}. Double the stakes?
-                </div>
-                <div className="stake-actions">
-                  <button type="button" className="btn btn-danger" onClick={() => actions.double(true)}>
-                    Double! (2 base cards)
-                  </button>
-                  <button type="button" className="btn btn-pass" onClick={() => actions.double(false)}>
-                    Play on (1 base card)
-                  </button>
-                </div>
-              </div>
-              {handPreview}
-            </>
-          ) : (
-            <>
-              <div className="waiting-banner">
-                Waiting for {players.find((p) => p.seat === nextSeat(view.bidding.currentBidderSeat as Seat))?.name} to
-                consider a double...
-              </div>
-              {handPreview}
-            </>
-          ))}
-
-        {view.phase === 'redoubling' &&
-          (you === view.bidding.currentBidderSeat ? (
-            <>
-              <div className="stake-panel">
-                <div className="stake-prompt">They doubled the stakes! Answer with a redouble?</div>
-                <div className="stake-actions">
-                  <button type="button" className="btn btn-danger" onClick={() => actions.redouble(true)}>
-                    Redouble! (4 base cards)
-                  </button>
-                  <button type="button" className="btn btn-pass" onClick={() => actions.redouble(false)}>
-                    Accept (2 base cards)
-                  </button>
-                </div>
-              </div>
-              {handPreview}
-            </>
-          ) : (
-            <>
-              <div className="waiting-banner">
-                Doubled! Waiting for {players.find((p) => p.seat === view.bidding.currentBidderSeat)?.name} to consider
-                a redouble...
-              </div>
-              {handPreview}
-            </>
-          ))}
 
         {view.phase === 'playing' && (
           <>

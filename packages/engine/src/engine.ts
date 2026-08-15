@@ -85,9 +85,6 @@ function dealRound(
     completedTricks: [],
     baseCards,
     totalBaseCards,
-    stakeMultiplier: 1,
-    doubled: false,
-    redoubled: false,
     mustTrumpSeat: null,
     roundNumber,
     history,
@@ -267,7 +264,8 @@ function advanceBidding(state: GameState, log: string[]): GameState {
 }
 
 // A bidding round is over. Round one deals the rest of the hand and opens the
-// 24+ round; round two moves on to the doubling step.
+// 24+ round; round two moves straight into play - stakes are set automatically
+// by the bid tier, with no separate doubling step.
 function concludeBidding(state: GameState, log: string[]): GameState {
   if (!state.secondBatchDealt) {
     const { hands, stock } = dealSecondBatch(state);
@@ -295,9 +293,8 @@ function concludeBidding(state: GameState, log: string[]): GameState {
     return { ...state, hands, stock, secondBatchDealt: true, bidding: reopened, phase: 'bidding', log: cloneLog(state, ...log) };
   }
 
-  const deciderSeat = nextSeat(state.bidding.currentBidderSeat as Seat);
-  log.push(`${playerName(state.players, deciderSeat)} may double the stakes.`);
-  return { ...state, phase: 'doubling', log: cloneLog(state, ...log) };
+  log.push('Play begins.');
+  return beginPlay(state, log);
 }
 
 function beginPlay(state: GameState, log: string[]): GameState {
@@ -320,44 +317,6 @@ export function chooseTrump(state: GameState, seat: Seat, card: Card): GameState
   // Set (or replace) the trump this bidder sets aside, then resume the auction.
   const trump = { suit: card.suit, card, chosenBySeat: seat, revealed: false };
   return advanceBidding({ ...state, trump }, [`${playerName(state.players, seat)} sets a trump card aside (concealed).`]);
-}
-
-// The defender to the bidder's left speaks for the defending team: yell
-// "Double!" to put 2 base cards on the line, or let the round play at 1.
-export function declareDouble(state: GameState, seat: Seat, wantsDouble: boolean): GameState {
-  if (state.phase !== 'doubling') throw new Error('Not in doubling phase');
-  const bidderSeat = state.bidding.currentBidderSeat as Seat;
-  if (seat !== nextSeat(bidderSeat)) throw new Error('Only the defender after the bidder declares the double');
-
-  if (!wantsDouble) {
-    return beginPlay(state, ['No double. Play begins.']);
-  }
-  return {
-    ...state,
-    stakeMultiplier: 2,
-    doubled: true,
-    phase: 'redoubling',
-    log: cloneLog(
-      state,
-      `${playerName(state.players, seat)} yells DOUBLE! 2 base cards on the line.`,
-      `${playerName(state.players, bidderSeat)} may answer with a redouble.`
-    ),
-  };
-}
-
-// The bidder answers a double: redouble to 4 base cards, or accept at 2.
-export function declareRedouble(state: GameState, seat: Seat, wantsRedouble: boolean): GameState {
-  if (state.phase !== 'redoubling') throw new Error('Not in redoubling phase');
-  const bidderSeat = state.bidding.currentBidderSeat as Seat;
-  if (seat !== bidderSeat) throw new Error('Only the bidder answers a double');
-
-  if (!wantsRedouble) {
-    return beginPlay(state, ['Double accepted. Play begins at 2 base cards.']);
-  }
-  return beginPlay(
-    { ...state, stakeMultiplier: 4, redoubled: true },
-    [`${playerName(state.players, seat)} answers REDOUBLE! 4 base cards on the line. Play begins.`]
-  );
 }
 
 export function requestTrumpReveal(state: GameState, seat: Seat): GameState {
@@ -496,12 +455,12 @@ function finishRound(state: GameState): GameState {
   const kappu = tricksWonByTeam[biddingTeam] === 8;
 
   // The base-card exchange: the losing team hands base cards to the winners.
-  // The bid tier auto-scales the stake (20-23 doubles it, 24+ quadruples it),
-  // and a table double/redouble multiplies that again.
+  // The bid tier sets the stake automatically: 20-23 doubles it, 24+
+  // quadruples it.
   const roundWinnerTeam: 0 | 1 = made ? biddingTeam : otherTeam;
   const roundLoserTeam: 0 | 1 = roundWinnerTeam === 0 ? 1 : 0;
   const loserEnteredAtZero = state.baseCards[roundLoserTeam] === 0;
-  const effectiveStake = bidTierStake(bid) * state.stakeMultiplier;
+  const effectiveStake = bidTierStake(bid);
   const cardsTransferred = Math.min(effectiveStake, state.baseCards[roundLoserTeam]);
   const baseCards: [number, number] = [...state.baseCards];
   baseCards[roundLoserTeam] -= cardsTransferred;
@@ -559,7 +518,7 @@ function finishRound(state: GameState): GameState {
       ? `Bidding team captured ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid made${kappu ? ' with a KAPPU (all 8 kai)!' : '.'}`
       : `Bidding team captured only ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid failed.`,
     cardsTransferred > 0
-      ? `Team ${roundLoserTeam === 0 ? 'A' : 'B'} hands over ${cardsTransferred} base card${cardsTransferred > 1 ? 's' : ''}${effectiveStake > 1 ? ` (stakes: ${bid >= 24 ? '24+ quadruple' : bid >= 20 ? '20+ double' : 'standard'}${state.doubled ? state.redoubled ? ', redoubled' : ', doubled' : ''})` : ''}. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
+      ? `Team ${roundLoserTeam === 0 ? 'A' : 'B'} hands over ${cardsTransferred} base card${cardsTransferred > 1 ? 's' : ''}${effectiveStake > 1 ? ` (stakes: ${bid >= 24 ? '24+ bid, quadruple' : '20+ bid, double'})` : ''}. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
       : `Team ${roundLoserTeam === 0 ? 'A' : 'B'} has no base cards left to hand over.`,
   ];
   for (const s of kunukkuMarked) log.push(`${playerName(state.players, s)} wears a kunukku clip!`);
@@ -598,9 +557,6 @@ function finishRound(state: GameState): GameState {
     pointsCaptured,
     made,
     kappu,
-    doubled: state.doubled,
-    redoubled: state.redoubled,
-    stakeMultiplier: state.stakeMultiplier,
     roundWinnerTeam,
     cardsTransferred,
     baseCardsAfter: baseCards,
@@ -625,8 +581,6 @@ function finishRound(state: GameState): GameState {
 export function getCurrentActorSeat(state: Pick<GameState, 'phase' | 'bidding' | 'trick'>): Seat | null {
   if (state.phase === 'bidding') return state.bidding.turnSeat;
   if (state.phase === 'trump_selection') return state.bidding.currentBidderSeat;
-  if (state.phase === 'doubling') return nextSeat(state.bidding.currentBidderSeat as Seat);
-  if (state.phase === 'redoubling') return state.bidding.currentBidderSeat;
   if (state.phase === 'playing') {
     return state.trick.cards.length === 0
       ? (state.trick.leadSeat as Seat)
