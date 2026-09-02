@@ -1,5 +1,6 @@
-import type { Card, KunukkuLevel, Player, Seat } from '@twenty-eight/engine';
+import type { Card, KunukkuLevel, Player } from '@twenty-eight/engine';
 import { PlayingCard } from './Card';
+import type { TablePosition } from '../utils/seats';
 
 interface PlayerSeatProps {
   player: Player;
@@ -11,7 +12,7 @@ interface PlayerSeatProps {
   // When set, this seat has a trump card set aside beside it: card === null
   // shows it face-down (concealed); a card shows it face-up (just revealed).
   trumpAside?: { card: Card | null };
-  position: 'bottom' | 'left' | 'top' | 'right';
+  position: TablePosition;
 }
 
 export function PlayerSeat({
@@ -66,9 +67,4 @@ export function PlayerSeat({
       )}
     </div>
   );
-}
-
-export function seatPosition(seat: Seat, you: Seat): 'bottom' | 'left' | 'top' | 'right' {
-  const rel = (seat - you + 4) % 4;
-  return (['bottom', 'left', 'top', 'right'] as const)[rel];
 }

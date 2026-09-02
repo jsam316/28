@@ -58,12 +58,15 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
 // placement): advance to the next active seat, or close the round out.
 function advanceBidding(state: GameState, log: string[]): GameState {
   const bidding = structuredClone(state.bidding);
-  const remaining: Seat[] = [0, 1, 2, 3].filter((s) => !bidding.passed[s as Seat]) as Seat[];
-
   // The opener is obliged to bid, so by the time anyone can pass a bid always
-  // stands - a round can never close without a bidder.
-  const closed =
-    remaining.length === 0 || (remaining.length === 1 && bidding.currentBidderSeat !== null);
+  // stands - a round can never close without a bidder. The auction is over
+  // once every seat other than the standing bidder has passed (in round two
+  // the bidder "holds" by passing, which must not shut out the seats still to
+  // speak), or as soon as the bid hits the ceiling nobody can raise.
+  const stillToSpeak = ([0, 1, 2, 3] as Seat[]).filter(
+    (s) => !bidding.passed[s] && s !== bidding.currentBidderSeat
+  );
+  const closed = stillToSpeak.length === 0 || bidding.currentBid === bidding.maxBid;
   if (closed) {
     log.push(
       `Bidding closed. ${playerName(state.players, bidding.currentBidderSeat as Seat)} holds the bid at ${bidding.currentBid}.`
@@ -72,7 +75,7 @@ function advanceBidding(state: GameState, log: string[]): GameState {
   }
 
   let next = nextSeat(bidding.turnSeat);
-  while (bidding.passed[next]) next = nextSeat(next);
+  while (bidding.passed[next] || next === bidding.currentBidderSeat) next = nextSeat(next);
   bidding.turnSeat = next;
   return { ...state, bidding, phase: 'bidding', log: appendLog(state, ...log) };
 }

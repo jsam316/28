@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CompletedTrick, PlayedCard, Seat } from '@twenty-eight/engine';
 import { PlayingCard } from './Card';
-import { seatPosition } from './PlayerSeat';
+import { seatPosition } from '../utils/seats';
 
 interface TrickAreaProps {
   cards: PlayedCard[];

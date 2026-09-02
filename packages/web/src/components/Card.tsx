@@ -1,22 +1,5 @@
-import type { Card as CardType, Suit } from '@twenty-eight/engine';
-
-const SUIT_SYMBOL: Record<Suit, string> = {
-  S: '♠',
-  H: '♥',
-  D: '♦',
-  C: '♣',
-};
-
-const SUIT_NAME: Record<Suit, string> = {
-  S: 'Spades',
-  H: 'Hearts',
-  D: 'Diamonds',
-  C: 'Clubs',
-};
-
-function isRed(suit: Suit): boolean {
-  return suit === 'H' || suit === 'D';
-}
+import type { Card as CardType } from '@twenty-eight/engine';
+import { SUIT_NAME, SUIT_SYMBOL, isRedSuit } from '../utils/cards';
 
 interface CardProps {
   card: CardType;
@@ -31,7 +14,7 @@ export function PlayingCard({ card, faceDown, disabled, selected, size = 'md', o
   if (faceDown) {
     return <div className={`card card-back size-${size}`} aria-label="face-down card" />;
   }
-  const red = isRed(card.suit);
+  const red = isRedSuit(card.suit);
   return (
     <button
       type="button"
@@ -55,12 +38,4 @@ export function PlayingCard({ card, faceDown, disabled, selected, size = 'md', o
       </span>
     </button>
   );
-}
-
-export function suitSymbol(suit: Suit): string {
-  return SUIT_SYMBOL[suit];
-}
-
-export function suitName(suit: Suit): string {
-  return SUIT_NAME[suit];
 }

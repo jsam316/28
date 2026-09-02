@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { bidTierStake, getCurrentActorSeat, type Card, type PlayerView, type Seat } from '@twenty-eight/engine';
-import { PlayerSeat, seatPosition } from './PlayerSeat';
+import { PlayerSeat } from './PlayerSeat';
+import { seatPosition } from '../utils/seats';
 import { TrickArea, TRICK_ANIM_TOTAL_MS } from './TrickArea';
 import { Hand } from './Hand';
 import { PlayingCard } from './Card';

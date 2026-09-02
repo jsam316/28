@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The engine is a dependency of both the server and the web app.
+      - name: Build engine
+        run: npm run build -w packages/engine
+
+      - name: Typecheck engine (including tests)
+        run: npm run typecheck -w packages/engine
+
+      - name: Typecheck server
+        run: npx tsc --noEmit -p packages/server/tsconfig.json
+
+      - name: Typecheck web
+        run: npx tsc -b packages/web
+
+      - name: Lint web
+        run: npm run lint -w packages/web
+
+      - name: Engine unit tests
+        run: npm test -w packages/engine
+
+      - name: Engine self-test (200 simulated matches)
+        run: npm run selftest -w packages/engine
+
+      - name: Build web
+        run: npm run build -w packages/web

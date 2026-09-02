@@ -40,11 +40,19 @@ Then open the web app (Vite prints the local URL, typically http://localhost:517
 Single-player mode works without the server running. Online mode expects the server at
 `http://localhost:4000` by default — override with `VITE_SERVER_URL` in `packages/web/.env`.
 
-## Engine self-test
+## Tests and checks
 
 ```bash
-npm run test:engine
+npm run test:engine   # unit tests, then the 200-match self-test
+npm run ci            # everything the CI workflow runs: build, typecheck, lint, tests
 ```
 
-Simulates 200 full games with 4 AI bots end-to-end and checks the rules invariants hold
-(28 points captured per round, no duplicate cards, hands empty at round end, etc.).
+- `packages/engine/test/*.test.ts` are rule-level unit tests (bidding rounds, the set-aside
+  trump, calling for trump, early round end, stakes, base cards, kunukku) built on
+  `node:test` and run through `tsx`.
+- `packages/engine/src/selftest.ts` simulates 200 full matches with 4 AI bots end-to-end and
+  checks the rules invariants hold (28 points captured per round, no duplicate cards, base
+  cards conserved, clips only shed by the declaring team, etc.).
+
+The `CI` GitHub Actions workflow runs the same checks on every pull request and on pushes to
+non-main branches; `Deploy to GitHub Pages` publishes `main`.
