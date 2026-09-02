@@ -1,5 +1,6 @@
 import type { Card, Suit } from '@twenty-eight/engine';
-import { PlayingCard, suitName, suitSymbol } from './Card';
+import { PlayingCard } from './Card';
+import { suitName, suitSymbol } from '../utils/cards';
 
 interface TrumpBannerProps {
   suit: Suit;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CompletedTrick, PlayedCard, Seat } from '@twenty-eight/engine';
 import { PlayingCard } from './Card';
-import { seatPosition } from './PlayerSeat';
+import { seatPosition } from '../utils/seats';
 
 interface TrickAreaProps {
   cards: PlayedCard[];
@@ -12,9 +12,9 @@ interface TrickAreaProps {
 // The winning (4th) card lands on the table and every card rests here before
 // the whole kai sweeps to the winner. Without the rest beat the 4th card
 // would mount already carrying the sweep transform and never be seen.
-const REST_MS = 650;
+export const TRICK_REST_MS = 650;
 const SWEEP_MS = 650;
-export const TRICK_ANIM_TOTAL_MS = REST_MS + SWEEP_MS;
+export const TRICK_ANIM_TOTAL_MS = TRICK_REST_MS + SWEEP_MS;
 
 export function TrickArea({ cards, you, completedTricks }: TrickAreaProps) {
   const [completed, setCompleted] = useState<CompletedTrick | null>(null);
@@ -29,7 +29,7 @@ export function TrickArea({ cards, you, completedTricks }: TrickAreaProps) {
       // transition (rather than mounting) toward the winner.
       setCompleted(justCompleted);
       setSweeping(false);
-      const sweepTimer = setTimeout(() => setSweeping(true), REST_MS);
+      const sweepTimer = setTimeout(() => setSweeping(true), TRICK_REST_MS);
       const clearTimer = setTimeout(() => {
         setCompleted(null);
         setSweeping(false);

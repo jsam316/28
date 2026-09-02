@@ -19,12 +19,36 @@ import {
 } from '@twenty-eight/engine';
 
 import { TRICK_ANIM_TOTAL_MS } from '../components/TrickArea';
+import { loadJSON, removeKey, saveJSON } from '../utils/storage';
 
 const HUMAN_SEAT: Seat = 0;
 const BOT_DELAY_MS = 700;
 // When a bot leads a fresh kai, the previous kai is still resting/sweeping on
 // the table — wait for that to finish so its 4th card stays visible.
 const BOT_LEAD_DELAY_MS = TRICK_ANIM_TOTAL_MS + 150;
+
+const SAVE_KEY = 'localGame';
+
+// A solo match in progress, kept in localStorage so closing the tab (or the
+// PWA) mid-game loses nothing.
+export interface SavedLocalGame {
+  version: 1;
+  savedAt: number;
+  humanName: string;
+  baseCardsPerTeam: number;
+  difficulty: BotDifficulty;
+  state: GameState;
+}
+
+export function loadSavedLocalGame(): SavedLocalGame | null {
+  const saved = loadJSON<SavedLocalGame | null>(SAVE_KEY, null);
+  if (!saved || saved.version !== 1 || !saved.state || saved.state.phase === 'game_end') return null;
+  return saved;
+}
+
+export function clearSavedLocalGame() {
+  removeKey(SAVE_KEY);
+}
 
 function buildPlayers(humanName: string): Player[] {
   const botNames = ['Anitha', 'Rajan', 'Deepa'];
@@ -37,9 +61,27 @@ function buildPlayers(humanName: string): Player[] {
   }));
 }
 
-export function useLocalGame(humanName: string, baseCardsPerTeam: number, difficulty: BotDifficulty = 'regular') {
-  const [state, setState] = useState<GameState>(() => createGame(buildPlayers(humanName), { baseCardsPerTeam }));
+export function useLocalGame(
+  humanName: string,
+  baseCardsPerTeam: number,
+  difficulty: BotDifficulty = 'regular',
+  resumeFrom?: GameState
+) {
+  const [state, setState] = useState<GameState>(
+    () => resumeFrom ?? createGame(buildPlayers(humanName), { baseCardsPerTeam })
+  );
   const botTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Persist after every change; a finished match is dropped so the home
+  // screen does not offer to resume it.
+  useEffect(() => {
+    if (state.phase === 'game_end') {
+      clearSavedLocalGame();
+      return;
+    }
+    const saved: SavedLocalGame = { version: 1, savedAt: Date.now(), humanName, baseCardsPerTeam, difficulty, state };
+    saveJSON(SAVE_KEY, saved);
+  }, [state, humanName, baseCardsPerTeam, difficulty]);
 
   useEffect(() => {
     if (botTimer.current) {
@@ -83,10 +125,12 @@ export function useLocalGame(humanName: string, baseCardsPerTeam: number, diffic
 
   const view: PlayerView = getPlayerView(state, HUMAN_SEAT);
 
-  const bid = useCallback((value: 'pass' | number) => {
+  // Every human action goes through the engine, which throws on anything
+  // illegal; the state is simply left alone in that case.
+  const attempt = useCallback((fn: (prev: GameState) => GameState) => {
     setState((prev) => {
       try {
-        return placeBid(prev, HUMAN_SEAT, value);
+        return fn(prev);
       } catch (err) {
         console.error(err);
         return prev;
@@ -94,57 +138,15 @@ export function useLocalGame(humanName: string, baseCardsPerTeam: number, diffic
     });
   }, []);
 
-  const redeal = useCallback(() => {
-    setState((prev) => {
-      try {
-        return demandRedeal(prev, HUMAN_SEAT);
-      } catch (err) {
-        console.error(err);
-        return prev;
-      }
-    });
-  }, []);
-
-  const pickTrump = useCallback((card: Card) => {
-    setState((prev) => {
-      try {
-        return chooseTrump(prev, HUMAN_SEAT, card);
-      } catch (err) {
-        console.error(err);
-        return prev;
-      }
-    });
-  }, []);
-
-  const callTrump = useCallback(() => {
-    setState((prev) => {
-      try {
-        return requestTrumpReveal(prev, HUMAN_SEAT);
-      } catch (err) {
-        console.error(err);
-        return prev;
-      }
-    });
-  }, []);
-
-  const play = useCallback((card: Card) => {
-    setState((prev) => {
-      try {
-        return playCard(prev, HUMAN_SEAT, card);
-      } catch (err) {
-        console.error(err);
-        return prev;
-      }
-    });
-  }, []);
-
-  const nextRound = useCallback(() => {
-    setState((prev) => startNextRound(prev));
-  }, []);
+  const bid = useCallback((value: 'pass' | number) => attempt((prev) => placeBid(prev, HUMAN_SEAT, value)), [attempt]);
+  const redeal = useCallback(() => attempt((prev) => demandRedeal(prev, HUMAN_SEAT)), [attempt]);
+  const pickTrump = useCallback((card: Card) => attempt((prev) => chooseTrump(prev, HUMAN_SEAT, card)), [attempt]);
+  const callTrump = useCallback(() => attempt((prev) => requestTrumpReveal(prev, HUMAN_SEAT)), [attempt]);
+  const play = useCallback((card: Card) => attempt((prev) => playCard(prev, HUMAN_SEAT, card)), [attempt]);
+  const nextRound = useCallback(() => setState((prev) => startNextRound(prev)), []);
 
   const restart = useCallback(() => {
     setState(createGame(buildPlayers(humanName), { baseCardsPerTeam }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [humanName, baseCardsPerTeam]);
 
   return {

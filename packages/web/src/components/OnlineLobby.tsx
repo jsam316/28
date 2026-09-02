@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { prewarmServer } from '../net/socket';
 
 interface OnlineLobbyProps {
   name: string;
@@ -15,6 +16,12 @@ function randomRoomCode(): string {
 
 export function OnlineLobby({ name, onJoined, onExit }: OnlineLobbyProps) {
   const [joinCode, setJoinCode] = useState('');
+
+  // Start waking the server the moment the player heads online, so it is
+  // more likely to be up by the time they pick a room.
+  useEffect(() => {
+    prewarmServer();
+  }, []);
 
   return (
     <div className="home">
@@ -38,6 +45,9 @@ export function OnlineLobby({ name, onJoined, onExit }: OnlineLobbyProps) {
             value={joinCode}
             maxLength={6}
             placeholder="ABCDE"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
           />
         </label>

@@ -7,10 +7,14 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "tsx src/selftest.ts"
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test": "tsx --test test/*.test.ts",
+    "selftest": "tsx src/selftest.ts",
+    "bench": "tsx src/bench.ts"
   },
   "devDependencies": {
     "typescript": "^5.5.4",
-    "tsx": "^4.16.2"
+    "tsx": "^4.16.2",
+    "@types/node": "^22.0.0"
   }
 }

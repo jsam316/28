@@ -5,7 +5,13 @@ export interface RoomPlayer {
   name: string;
   isBot: boolean;
   connected: boolean;
+  ready: boolean;
   socketId: string | null;
+  // Stable per-browser id sent by the client so a dropped player can reclaim
+  // this seat when they reconnect. Bots have none.
+  playerId: string | null;
+  // Pending hand-over of this seat to a bot after a disconnect.
+  takeoverTimer: ReturnType<typeof setTimeout> | null;
 }
 
 export interface Room {
@@ -58,6 +64,9 @@ export function cleanupStaleRooms() {
   for (const [code, room] of rooms) {
     if (now - room.lastActivity > STALE_MS) {
       if (room.botTimer) clearTimeout(room.botTimer);
+      for (const slot of room.slots) {
+        if (slot?.takeoverTimer) clearTimeout(slot.takeoverTimer);
+      }
       rooms.delete(code);
     }
   }

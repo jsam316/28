@@ -1,6 +1,13 @@
 export * from './types.js';
 export * from './deck.js';
 export * from './rules.js';
-export * from './engine.js';
+export * from './dealing.js';
+export * from './bidding.js';
+export * from './play.js';
+export * from './scoring.js';
 export * from './view.js';
 export * from './bot.js';
+export * from './tracking.js';
+export { DIFFICULTY_PROFILES, smartPlay, wantsTrumpReveal } from './policy.js';
+export { monteCarloPlay, type SimulationSettings } from './simulate.js';
+export { playerName, partnerOf } from './state.js';

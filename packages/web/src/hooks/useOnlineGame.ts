@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Card, PlayerView, Seat } from '@twenty-eight/engine';
 import { getSocket } from '../net/socket';
+import { getPlayerId } from '../utils/identity';
 
 export interface RoomSeatInfo {
   seat: Seat;
   name: string | null;
   isBot: boolean;
   connected: boolean;
+  ready: boolean;
 }
 
 export interface RoomState {
@@ -15,7 +17,10 @@ export interface RoomState {
   started: boolean;
 }
 
-type ConnectionStatus = 'connecting' | 'connected' | 'error';
+// connecting: first contact, not yet seated. reconnecting: we had a seat and
+// the socket dropped; socket.io is retrying and the seat is reclaimed on the
+// next successful join. error: the room refused us.
+export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'error';
 
 export function useOnlineGame(name: string, roomCode: string) {
   const socketRef = useRef(getSocket());
@@ -24,14 +29,17 @@ export function useOnlineGame(name: string, roomCode: string) {
   const [seat, setSeat] = useState<Seat | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [view, setView] = useState<PlayerView | null>(null);
+  const hadSeat = useRef(false);
 
   useEffect(() => {
     const socket = socketRef.current;
+    const playerId = getPlayerId();
 
     function onConnect() {
-      socket.emit('room:join', { roomCode, name });
+      socket.emit('room:join', { roomCode, name, playerId });
     }
     function onJoined({ seat: s }: { roomCode: string; seat: Seat }) {
+      hadSeat.current = true;
       setSeat(s);
       setStatus('connected');
       setError(null);
@@ -47,8 +55,18 @@ export function useOnlineGame(name: string, roomCode: string) {
       setStatus((prev) => (prev === 'connected' ? prev : 'error'));
     }
     function onDisconnect() {
-      setStatus('error');
-      setError('Disconnected from server.');
+      // A seat we already held survives on the server; keep the table up and
+      // show that we are reconnecting rather than throwing the player out.
+      if (hadSeat.current) {
+        setStatus('reconnecting');
+      } else {
+        setStatus('connecting');
+      }
+    }
+    function onConnectError(err: Error) {
+      // While the socket keeps retrying, stay in connecting/reconnecting; the
+      // UI turns a long wait into a "server waking up" hint.
+      setError(err.message);
     }
 
     socket.on('connect', onConnect);
@@ -57,7 +75,7 @@ export function useOnlineGame(name: string, roomCode: string) {
     socket.on('game:view', onView);
     socket.on('room:error', onError);
     socket.on('disconnect', onDisconnect);
-    socket.on('connect_error', onDisconnect);
+    socket.on('connect_error', onConnectError);
 
     if (socket.connected) {
       onConnect();
@@ -72,7 +90,8 @@ export function useOnlineGame(name: string, roomCode: string) {
       socket.off('game:view', onView);
       socket.off('room:error', onError);
       socket.off('disconnect', onDisconnect);
-      socket.off('connect_error', onDisconnect);
+      socket.off('connect_error', onConnectError);
+      socket.emit('room:leave', {});
       socket.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,6 +99,10 @@ export function useOnlineGame(name: string, roomCode: string) {
 
   const startGame = useCallback((baseCards: number) => {
     socketRef.current.emit('room:start', { baseCards });
+  }, []);
+
+  const setReady = useCallback((ready: boolean) => {
+    socketRef.current.emit('room:ready', { ready });
   }, []);
 
   const bid = useCallback((value: 'pass' | number) => {
@@ -113,6 +136,7 @@ export function useOnlineGame(name: string, roomCode: string) {
     room,
     view,
     startGame,
+    setReady,
     bid,
     redeal,
     pickTrump,

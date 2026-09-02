@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { BotDifficulty } from '@twenty-eight/engine';
+import type { BotDifficulty, GameState } from '@twenty-eight/engine';
 import { Home } from './components/Home';
 import { GameScreen } from './components/GameScreen';
 import { OnlineLobby } from './components/OnlineLobby';
@@ -8,7 +8,7 @@ import { useLocalGame } from './hooks/useLocalGame';
 
 type Screen =
   | { kind: 'home' }
-  | { kind: 'local'; name: string; baseCardsPerTeam: number; difficulty: BotDifficulty }
+  | { kind: 'local'; name: string; baseCardsPerTeam: number; difficulty: BotDifficulty; resumeFrom?: GameState }
   | { kind: 'online-lobby'; name: string }
   | { kind: 'online-game'; name: string; roomCode: string };
 
@@ -16,17 +16,20 @@ function LocalGame({
   name,
   baseCardsPerTeam,
   difficulty,
+  resumeFrom,
   onExit,
 }: {
   name: string;
   baseCardsPerTeam: number;
   difficulty: BotDifficulty;
+  resumeFrom?: GameState;
   onExit: () => void;
 }) {
   const { view, bid, redeal, pickTrump, callTrump, play, nextRound, restart } = useLocalGame(
     name,
     baseCardsPerTeam,
-    difficulty
+    difficulty,
+    resumeFrom
   );
   return (
     <GameScreen
@@ -44,6 +47,15 @@ export default function App() {
     return (
       <Home
         onPlaySolo={(name, baseCardsPerTeam, difficulty) => setScreen({ kind: 'local', name, baseCardsPerTeam, difficulty })}
+        onResumeSolo={(saved) =>
+          setScreen({
+            kind: 'local',
+            name: saved.humanName,
+            baseCardsPerTeam: saved.baseCardsPerTeam,
+            difficulty: saved.difficulty,
+            resumeFrom: saved.state,
+          })
+        }
         onGoOnline={(name) => setScreen({ kind: 'online-lobby', name })}
       />
     );
@@ -55,6 +67,7 @@ export default function App() {
         name={screen.name}
         baseCardsPerTeam={screen.baseCardsPerTeam}
         difficulty={screen.difficulty}
+        resumeFrom={screen.resumeFrom}
         onExit={() => setScreen({ kind: 'home' })}
       />
     );

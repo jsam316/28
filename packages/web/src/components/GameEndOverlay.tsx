@@ -1,4 +1,5 @@
 import type { Player, RoundResult } from '@twenty-eight/engine';
+import { stakeLabel } from '../utils/stakes';
 
 interface GameEndOverlayProps {
   winner: 0 | 1;
@@ -34,10 +35,8 @@ export function GameEndOverlay({ winner, baseCards, totalBaseCards, lastResult, 
                   : 'Bid made!'
                 : `Bid failed — needed ${lastResult.bid}, captured only ${lastResult.pointsCaptured[lastResult.biddingTeam]}.`}
             </p>
-            {lastResult.bid >= 20 && (
-              <p className="result-failed">
-                Stakes on the final round: {lastResult.bid >= 24 ? '24+ bid — quadruple (×4)' : '20+ bid — double (×2)'}
-              </p>
+            {stakeLabel(lastResult.bid) && (
+              <p className="result-failed">Stakes on the final round: {stakeLabel(lastResult.bid)}</p>
             )}
             {lastResult.kunukkuCleared.length > 0 && (
               <p className="result-made">
