@@ -12,11 +12,15 @@ import {
   applyReveal,
   applyTrump,
   broadcastRoom,
+  findReturningSeat,
   handleDisconnect,
   joinRoom,
+  leaveRoom,
   reconnectRoom,
   scheduleBots,
+  setReady,
   startGame,
+  unreadyPlayers,
 } from './gameManager.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -42,28 +46,35 @@ interface SocketData {
 io.on('connection', (socket) => {
   const data: SocketData = {};
 
-  socket.on('room:join', ({ roomCode, name }: { roomCode: string; name: string }) => {
+  socket.on('room:join', ({ roomCode, name, playerId }: { roomCode: string; name: string; playerId?: string }) => {
     try {
-      const code = roomCode.trim().toUpperCase();
+      const code = (roomCode ?? '').trim().toUpperCase().slice(0, 8);
+      if (!code) {
+        socket.emit('room:error', { message: 'Enter a room code.' });
+        return;
+      }
       const cleanName = (name || 'Player').trim().slice(0, 20) || 'Player';
+      const cleanPlayerId = typeof playerId === 'string' && playerId.length <= 64 ? playerId : null;
       const room = getOrCreateRoom(code);
 
-      const existing = room.slots.find(
-        (s) => s && !s.connected && !s.isBot && s.name.toLowerCase() === cleanName.toLowerCase()
-      );
+      const returning = findReturningSeat(room, cleanPlayerId, cleanName);
 
       let seat: Seat;
-      if (existing) {
-        seat = existing.seat;
-        reconnectRoom(room, seat, socket.id);
+      if (returning) {
+        seat = returning.seat;
+        reconnectRoom(room, seat, socket.id, cleanPlayerId);
       } else {
+        if (room.state && room.state.phase !== 'game_end') {
+          socket.emit('room:error', { message: 'That game has already started.' });
+          return;
+        }
         const open = findOpenSeat(room);
         if (open === null) {
           socket.emit('room:error', { message: 'Room is full.' });
           return;
         }
         seat = open;
-        joinRoom(room, seat, cleanName, socket.id);
+        joinRoom(room, seat, cleanName, socket.id, cleanPlayerId);
       }
 
       data.roomCode = code;
@@ -71,16 +82,32 @@ io.on('connection', (socket) => {
       socket.join(code);
       socket.emit('room:joined', { roomCode: code, seat });
       broadcastRoom(io, room);
+      // A returning human takes back a seat a bot may have been playing.
+      scheduleBots(io, room);
     } catch (err) {
       socket.emit('room:error', { message: (err as Error).message });
     }
+  });
+
+  socket.on('room:ready', ({ ready }: { ready?: boolean }) => {
+    if (!data.roomCode || data.seat === undefined) return;
+    const room = getOrCreateRoom(data.roomCode);
+    setReady(room, data.seat, ready !== false);
+    broadcastRoom(io, room);
   });
 
   socket.on('room:start', ({ baseCards }: { baseCards?: number }) => {
     if (!data.roomCode) return;
     const room = getOrCreateRoom(data.roomCode);
     try {
-      startGame(io, room, baseCards ?? 6);
+      if (data.seat !== 0) throw new Error('Only the host can start the game.');
+      if (room.state && room.state.phase !== 'game_end') throw new Error('The game has already started.');
+      const waiting = unreadyPlayers(room);
+      if (waiting.length > 0) {
+        throw new Error(`Waiting for ${waiting.map((p) => p.name).join(', ')} to be ready.`);
+      }
+      const size = [3, 6, 9].includes(Number(baseCards)) ? Number(baseCards) : 6;
+      startGame(io, room, size);
     } catch (err) {
       socket.emit('room:error', { message: (err as Error).message });
     }
@@ -108,6 +135,15 @@ io.on('connection', (socket) => {
 
   socket.on('game:nextRound', () => {
     withRoom((room) => applyNextRound(room));
+  });
+
+  socket.on('room:leave', () => {
+    if (!data.roomCode) return;
+    const room = getOrCreateRoom(data.roomCode);
+    leaveRoom(io, room, socket.id);
+    socket.leave(data.roomCode);
+    data.roomCode = undefined;
+    data.seat = undefined;
   });
 
   socket.on('disconnect', () => {

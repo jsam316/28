@@ -1,6 +1,7 @@
 import type { Server } from 'socket.io';
 import {
   type Card,
+  type GameState,
   type Player,
   type Seat,
   chooseTrump,
@@ -14,19 +15,22 @@ import {
   requestTrumpReveal,
   startNextRound,
 } from '@twenty-eight/engine';
-import { type Room, touch } from './rooms.js';
+import { type Room, type RoomPlayer, touch } from './rooms.js';
 
 const BOT_NAMES = ['Anitha', 'Rajan', 'Deepa', 'Vinu'];
 const BOT_DELAY_MS = 900;
 // A bot leading a fresh kai waits for the clients' previous-kai rest+sweep
 // animation to finish (see TRICK_ANIM_TOTAL_MS in the web TrickArea).
 const BOT_LEAD_DELAY_MS = 1450;
+// How long a dropped player keeps their seat before a bot takes over, so a
+// brief network blip or a locked phone does not hand the hand to a bot.
+const TAKEOVER_GRACE_MS = 20_000;
 
 export function broadcastRoom(io: Server, room: Room) {
   const seats = room.slots.map((slot, seat) =>
     slot
-      ? { seat, name: slot.name, isBot: slot.isBot, connected: slot.connected }
-      : { seat, name: null, isBot: false, connected: false }
+      ? { seat, name: slot.name, isBot: slot.isBot, connected: slot.connected, ready: slot.ready }
+      : { seat, name: null, isBot: false, connected: false, ready: false }
   );
   io.to(room.code).emit('room:state', {
     roomCode: room.code,
@@ -43,18 +47,66 @@ export function broadcastRoom(io: Server, room: Room) {
   }
 }
 
-export function joinRoom(room: Room, seat: Seat, name: string, socketId: string) {
-  room.slots[seat] = { seat, name, isBot: false, connected: true, socketId };
+// Keep the players list inside the game state in step with the room, so
+// every client can show who is offline or bot-controlled.
+function syncPlayers(room: Room) {
+  if (!room.state) return;
+  const players: Player[] = room.state.players.map((p) => {
+    const slot = room.slots[p.seat];
+    return slot ? { ...p, name: slot.name, isBot: slot.isBot, connected: slot.connected } : p;
+  });
+  room.state = { ...room.state, players } as GameState;
+}
+
+export function joinRoom(room: Room, seat: Seat, name: string, socketId: string, playerId: string | null) {
+  room.slots[seat] = {
+    seat,
+    name,
+    isBot: false,
+    connected: true,
+    ready: seat === 0, // the host is implicitly ready
+    socketId,
+    playerId,
+    takeoverTimer: null,
+  };
+  syncPlayers(room);
   touch(room);
 }
 
-export function reconnectRoom(room: Room, seat: Seat, socketId: string) {
+export function reconnectRoom(room: Room, seat: Seat, socketId: string, playerId: string | null) {
   const slot = room.slots[seat];
-  if (slot) {
-    slot.connected = true;
-    slot.socketId = socketId;
+  if (!slot) return;
+  if (slot.takeoverTimer) {
+    clearTimeout(slot.takeoverTimer);
+    slot.takeoverTimer = null;
   }
+  slot.connected = true;
+  slot.socketId = socketId;
+  slot.isBot = false; // a bot that filled in while they were away steps aside
+  if (playerId) slot.playerId = playerId;
+  syncPlayers(room);
   touch(room);
+}
+
+// The seat a returning player should get back: their own by player id first,
+// then (for clients without one) a disconnected seat carrying their name.
+export function findReturningSeat(room: Room, playerId: string | null, name: string): RoomPlayer | undefined {
+  if (playerId) {
+    const own = room.slots.find((s) => s?.playerId === playerId);
+    if (own) return own;
+  }
+  return room.slots.find((s) => s && !s.connected && !s.isBot && s.name.toLowerCase() === name.toLowerCase()) ?? undefined;
+}
+
+export function setReady(room: Room, seat: Seat, ready: boolean) {
+  const slot = room.slots[seat];
+  if (slot && !slot.isBot) slot.ready = ready;
+  touch(room);
+}
+
+// Every connected human other than the host must have tapped Ready.
+export function unreadyPlayers(room: Room): RoomPlayer[] {
+  return room.slots.filter((s): s is RoomPlayer => !!s && !s.isBot && s.connected && s.seat !== 0 && !s.ready);
 }
 
 export function handleDisconnect(io: Server, room: Room, socketId: string) {
@@ -62,25 +114,49 @@ export function handleDisconnect(io: Server, room: Room, socketId: string) {
   if (!slot) return;
   slot.connected = false;
   slot.socketId = null;
+
   if (room.state && room.state.phase !== 'game_end') {
-    // A vacant human seat mid-game is taken over by a bot so play can continue.
-    slot.isBot = true;
-    scheduleBots(io, room);
+    // Hold the seat for a while; if they do not come back a bot takes over so
+    // play can continue for everyone else.
+    if (slot.takeoverTimer) clearTimeout(slot.takeoverTimer);
+    slot.takeoverTimer = setTimeout(() => {
+      slot.takeoverTimer = null;
+      if (slot.connected) return;
+      slot.isBot = true;
+      syncPlayers(room);
+      broadcastRoom(io, room);
+      scheduleBots(io, room);
+    }, TAKEOVER_GRACE_MS);
+  } else if (!room.state) {
+    // Not started: a dropped player simply frees the seat.
+    room.slots[slot.seat] = null;
   }
+  syncPlayers(room);
   broadcastRoom(io, room);
   touch(room);
+}
+
+// A player deliberately leaving the room (back to the home screen).
+export function leaveRoom(io: Server, room: Room, socketId: string) {
+  const slot = room.slots.find((s) => s?.socketId === socketId);
+  if (!slot) return;
+  slot.playerId = null; // do not hand the seat back automatically
+  handleDisconnect(io, room, socketId);
 }
 
 export function startGame(io: Server, room: Room, baseCardsPerTeam: number) {
   const players: Player[] = [0, 1, 2, 3].map((seat) => {
     const slot = room.slots[seat as Seat];
-    if (slot) return { id: slot.socketId ?? `seat-${seat}`, name: slot.name, seat: seat as Seat, isBot: false, connected: true };
+    if (slot) return { id: slot.playerId ?? slot.socketId ?? `seat-${seat}`, name: slot.name, seat: seat as Seat, isBot: false, connected: true };
     room.slots[seat as Seat] = {
       seat: seat as Seat,
       name: BOT_NAMES[seat],
       isBot: true,
       connected: true,
+      ready: true,
       socketId: null,
+      playerId: null,
+      takeoverTimer: null,
     };
     return { id: `bot-${seat}`, name: BOT_NAMES[seat], seat: seat as Seat, isBot: true, connected: true };
   });
