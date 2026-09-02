@@ -7,4 +7,7 @@ export * from './play.js';
 export * from './scoring.js';
 export * from './view.js';
 export * from './bot.js';
+export * from './tracking.js';
+export { DIFFICULTY_PROFILES, smartPlay, wantsTrumpReveal } from './policy.js';
+export { monteCarloPlay, type SimulationSettings } from './simulate.js';
 export { playerName, partnerOf } from './state.js';

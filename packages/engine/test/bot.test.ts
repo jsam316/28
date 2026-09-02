@@ -15,7 +15,7 @@ import {
   requestTrumpReveal,
   startNextRound,
 } from '../src/index.js';
-import { cards, id, mulberry32, seededGame } from './helpers.js';
+import { card, cards, id, mulberry32, playingState, seededGame, trickWonBy } from './helpers.js';
 
 // Drive one round entirely with bots, checking every action was legal (the
 // engine throws on anything illegal) and returning the settled state.
@@ -62,6 +62,50 @@ describe('bot legality', () => {
       }
     });
   }
+});
+
+describe('bot play heuristics', () => {
+  // Dealer 3, so seat 0 leads. Seat 1 bid 16 and set aside the 7 of hearts.
+  function table(hands: [string[], string[], string[], string[]], revealed = false): GameState {
+    return playingState({ hands, bidderSeat: 1, bid: 16, trumpCard: '7H', revealed });
+  }
+  function playFor(s: GameState, seat: Seat, difficulty: BotDifficulty): string {
+    const action = decideBotAction(getPlayerView(s, seat), difficulty);
+    assert.equal(action.type, 'play');
+    return action.type === 'play' ? id(action.card) : '';
+  }
+
+  it('feeds points to a partner who is winning when last to play', () => {
+    let s = table([['JS', '7D', '8D'], ['8S', 'QD', 'KD'], ['9S', '10S', '7C'], ['QS', '9D', '8C']]);
+    s = playCard(s, 0, card('JS'));
+    s = playCard(s, 1, card('8S'));
+    // Seat 2's partner (seat 0) holds the kai with the Jack and seat 3 has
+    // followed, so the 9 (2 points) is a safe gift; a cheap bot would keep it.
+    assert.equal(playFor(s, 2, 'regular'), '9S');
+    assert.equal(playFor(s, 2, 'expert'), '9S');
+  });
+
+  it('keeps cheap when the partner is not safe yet', () => {
+    let s = table([['AS', '7D', '8D'], ['8S', 'QD', 'KD'], ['9S', '10S', '7C'], ['JS', '9D', '8C']]);
+    s = playCard(s, 0, card('AS'));
+    s = playCard(s, 1, card('8S'));
+    // Seat 3 still to play could hold the Jack: a regular bot follows with its cheapest spade.
+    assert.equal(playFor(s, 2, 'regular'), '10S');
+  });
+
+  it('cashes a boss card when leading with the cards tracked', () => {
+    // All the higher spades are gone: seat 0 leads and its 10S is boss.
+    let s = table([['10S', '7D'], ['8S', 'QD'], ['9D', '7C'], ['KD', '8C']]);
+    s = {
+      ...s,
+      completedTricks: [
+        trickWonBy(0, 3 + 2 + 1, 1),
+        { ...trickWonBy(0, 0, 2), cards: cards('JS', '9S', 'AS', 'KS').map((c, i) => ({ seat: i as Seat, card: c })) },
+      ],
+      trick: { leadSeat: 0, cards: [], trickNumber: 3 },
+    };
+    assert.equal(playFor(s, 0, 'expert'), '10S');
+  });
 });
 
 describe('bot decisions', () => {

@@ -42,9 +42,9 @@ export function Home({ onPlaySolo, onGoOnline }: HomeProps) {
         <label className="field">
           Bot difficulty
           <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as BotDifficulty)}>
-            <option value="rookie">Rookie — erratic bidding, occasional mistakes</option>
-            <option value="regular">Regular — solid, sensible play</option>
-            <option value="expert">Expert — sharp bidding, few openings</option>
+            <option value="rookie">Rookie — overbids, occasional mistakes</option>
+            <option value="regular">Regular — sensible bids, feeds its partner</option>
+            <option value="expert">Expert — counts every card, plays the endgame out</option>
           </select>
         </label>
         <button

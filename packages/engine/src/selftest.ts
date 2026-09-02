@@ -207,7 +207,7 @@ function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
 
 function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
   const players = makePlayers();
-  let state = createGame(players, { baseCardsPerTeam: 6 });
+  let state = createGame(players, { baseCardsPerTeam: 3 });
   let rounds = 0;
   while (state.phase !== 'game_end') {
     rounds++;

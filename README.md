@@ -40,6 +40,23 @@ Then open the web app (Vite prints the local URL, typically http://localhost:517
 Single-player mode works without the server running. Online mode expects the server at
 `http://localhost:4000` by default — override with `VITE_SERVER_URL` in `packages/web/.env`.
 
+## Bot AI
+
+Three difficulty levels share one heuristic policy (`packages/engine/src/policy.ts`) and differ
+in how much they know and how carefully they bid:
+
+- **Rookie** overbids, ignores its partner and plays a random legal card about a fifth of the time.
+- **Regular** bids from a hand evaluation calibrated by simulation against the points a declaring
+  team actually captures, and feeds point cards to a partner who is safely winning a kai.
+- **Expert** also remembers every card played and which seats are void in a suit
+  (`tracking.ts`), leads boss cards, draws trumps as declarer, and from any point in the round
+  runs a determinized Monte Carlo search (`simulate.ts`): it deals the unseen cards out to the
+  other seats in many ways consistent with what it knows and plays each candidate card out.
+
+```bash
+npm run bench -w packages/engine        # expert vs regular, regular vs rookie, expert vs rookie
+```
+
 ## Tests and checks
 
 ```bash
