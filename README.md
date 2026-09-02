@@ -13,6 +13,20 @@ A web app for **28 (Twenty-Eight)**, the trick-taking card game played across Ke
 - **Online multiplayer** — host a room, share the code with up to 3 friends; any empty seats
   are automatically filled by AI bots so you can play with 1-4 humans.
 
+## Around the table
+
+- **How to play** — the full rule set, house rules included, from the home screen or the `?` button
+  at the table.
+- **Sound** — synthesised effects (cards, kai sweep, trump call, bids, your turn, round result)
+  with a persisted mute toggle; no audio files, so they work offline.
+- **Resume** — a solo match is saved after every move; the home screen offers to resume it, and
+  your name, difficulty and base-card choice are remembered.
+- **Keyboard** — Tab/Enter on every control, `1`–`8` play the matching card, `T` calls for trump,
+  and a screen-reader live region announces each event.
+- **Online rooms** — guests tap Ready before the host can start; a dropped player keeps their seat
+  for 20 seconds (and can reclaim it any time after, as long as the room lives) before a bot fills
+  in; the lobby pre-warms the free-tier server and says so if it is still waking up.
+
 ## Project layout
 
 This is an npm workspaces monorepo:
