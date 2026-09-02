@@ -1,4 +1,5 @@
 import type { Player, RoundResult } from '@twenty-eight/engine';
+import { stakeLabel } from '../utils/stakes';
 
 interface RoundEndOverlayProps {
   result: RoundResult;
@@ -30,11 +31,7 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
               : 'Bid made!'
             : `Bid failed — needed ${result.bid}, captured only ${result.pointsCaptured[result.biddingTeam]}.`}
         </p>
-        {result.bid >= 20 && (
-          <p className="result-failed">
-            Stakes this round: {result.bid >= 24 ? '24+ bid — quadruple (×4)' : '20+ bid — double (×2)'}
-          </p>
-        )}
+        {stakeLabel(result.bid) && <p className="result-failed">Stakes this round: {stakeLabel(result.bid)}</p>}
         <p>
           {result.cardsTransferred > 0 ? (
             <>

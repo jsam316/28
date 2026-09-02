@@ -107,7 +107,7 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
       <Scoreboard
         baseCards={view.baseCards}
         totalBaseCards={view.totalBaseCards}
-        stakeMultiplier={view.bidding.currentBid !== null ? bidTierStake(view.bidding.currentBid) : 1}
+        stakeTier={view.bidding.currentBid !== null ? bidTierStake(view.bidding.currentBid) : 1}
         roundNumber={view.roundNumber}
         trumpSuit={view.trump.suit}
         trumpConcealed={view.trump.concealedForYou}

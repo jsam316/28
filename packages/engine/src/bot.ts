@@ -1,3 +1,4 @@
+import { isRaisingOverPartner } from './bidding.js';
 import { minNextBid } from './rules.js';
 import {
   type Card,
@@ -68,7 +69,7 @@ function decideBid(view: PlayerView, difficulty: BotDifficulty): BotAction {
   // rather than folding into a passive hand as usual.
   const redemptionBonus = view.kunukku[view.you] > 0 ? 6 : 0;
   const maxWillingBid = Math.round(profile.bidBase + score * 0.65 + jitter + redemptionBonus);
-  const { currentBid, currentBidderSeat, minBid, maxBid } = view.bidding;
+  const { currentBid, minBid, maxBid } = view.bidding;
 
   // The opener cannot pass: with no bid on the table in round one, open at the
   // minimum however poor the hand (a pointless hand takes the redeal path
@@ -78,11 +79,7 @@ function decideBid(view: PlayerView, difficulty: BotDifficulty): BotAction {
   }
 
   // Raising over your own partner's standing bid requires at least 20.
-  const raisingOverPartner =
-    currentBidderSeat !== null &&
-    currentBidderSeat !== view.you &&
-    teamOf(currentBidderSeat as 0 | 1 | 2 | 3) === teamOf(view.you as 0 | 1 | 2 | 3);
-  const nextBid = minNextBid(currentBid, minBid, view.secondBatchDealt, raisingOverPartner);
+  const nextBid = minNextBid(currentBid, minBid, view.secondBatchDealt, isRaisingOverPartner(view.bidding, view.you));
   if (nextBid > maxBid || maxWillingBid < nextBid) {
     return { type: 'bid', value: 'pass' };
   }

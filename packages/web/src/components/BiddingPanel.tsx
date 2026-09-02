@@ -1,4 +1,4 @@
-import { minNextBid, teamOf, type BiddingState, type Player, type Seat } from '@twenty-eight/engine';
+import { isRaisingOverPartner, minNextBid, type BiddingState, type Player, type Seat } from '@twenty-eight/engine';
 
 interface BiddingPanelProps {
   bidding: BiddingState;
@@ -24,10 +24,7 @@ export function BiddingPanel({
   // choices are to open at the minimum (or redeal a pointless hand).
   const mustOpen = !secondBatchDealt && bidding.history.length === 0;
   // Raising over your own partner's standing bid requires at least 20.
-  const raisingOverPartner =
-    bidding.currentBidderSeat !== null &&
-    bidding.currentBidderSeat !== you &&
-    teamOf(bidding.currentBidderSeat) === teamOf(you);
+  const raisingOverPartner = isRaisingOverPartner(bidding, you);
   const nextBid = minNextBid(bidding.currentBid, bidding.minBid, secondBatchDealt, raisingOverPartner);
   const options: number[] = [];
   for (let v = nextBid; v <= Math.min(bidding.maxBid, nextBid + 5); v++) options.push(v);

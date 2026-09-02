@@ -1,4 +1,5 @@
-import { canDemandRedeal, canRequestTrumpReveal, getLegalCards } from './engine.js';
+import { canDemandRedeal } from './dealing.js';
+import { canRequestTrumpReveal, getLegalCards } from './play.js';
 import type { GameState, PlayerView, Seat } from './types.js';
 
 export function getPlayerView(state: GameState, seat: Seat): PlayerView {
