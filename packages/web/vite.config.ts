@@ -1,3 +1,5 @@
+import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -14,12 +16,36 @@ const pwaAssetsPreset = {
   },
 }
 
+// Build stamp shown on the home screen so anyone can tell which build they
+// are running: package version, short commit and build date.
+function buildStamp() {
+  const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
+  let sha = (process.env.GITHUB_SHA ?? '').slice(0, 7)
+  if (!sha) {
+    try {
+      sha = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+    } catch {
+      sha = 'dev'
+    }
+  }
+  return { version, sha, date: new Date().toISOString().slice(0, 10) }
+}
+
+const stamp = buildStamp()
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(stamp.version),
+    __BUILD_SHA__: JSON.stringify(stamp.sha),
+    __BUILD_DATE__: JSON.stringify(stamp.date),
+  },
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // The app decides when to apply an update (see UpdateToast): it reloads
+      // itself on the home screen and offers a Reload button mid-game.
+      registerType: 'prompt',
       pwaAssets: {
         // Generates favicon/apple-touch-icon/maskable icons from this one
         // source image and injects the matching <link> tags automatically.
