@@ -124,6 +124,10 @@ export function Home({ onPlaySolo, onResumeSolo, onGoOnline }: HomeProps) {
         {!online && <p className="offline-note">You're offline — single player still works.</p>}
       </div>
 
+      <p className="version-line">
+        Version {__APP_VERSION__} · build {__BUILD_SHA__} · {__BUILD_DATE__}
+      </p>
+
       {showRules && <RulesPanel onClose={closeRules} />}
     </div>
   );

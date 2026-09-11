@@ -5,6 +5,7 @@ import { GameScreen } from './components/GameScreen';
 import { OnlineLobby } from './components/OnlineLobby';
 import { OnlineGame } from './components/OnlineGame';
 import { useLocalGame } from './hooks/useLocalGame';
+import { UpdateToast } from './components/UpdateToast';
 
 type Screen =
   | { kind: 'home' }
@@ -43,6 +44,15 @@ function LocalGame({
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ kind: 'home' });
 
+  return (
+    <>
+      <UpdateToast canAutoReload={screen.kind === 'home'} />
+      <Screens screen={screen} setScreen={setScreen} />
+    </>
+  );
+}
+
+function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) => void }) {
   if (screen.kind === 'home') {
     return (
       <Home

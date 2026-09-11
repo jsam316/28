@@ -23,6 +23,9 @@ A web app for **28 (Twenty-Eight)**, the trick-taking card game played across Ke
   your name, difficulty and base-card choice are remembered.
 - **Keyboard** — Tab/Enter on every control, `1`–`8` play the matching card, `T` calls for trump,
   and a screen-reader live region announces each event.
+- **Version line and updates** — the home screen shows the version, commit and build date. An
+  open tab checks for a new build every hour: on the home screen it reloads itself, mid-game it
+  offers a Reload button so a hand is never interrupted (a solo game resumes after the reload).
 - **Online rooms** — guests tap Ready before the host can start; a dropped player keeps their seat
   for 20 seconds (and can reclaim it any time after, as long as the room lives) before a bot fills
   in; the lobby pre-warms the free-tier server and says so if it is still waking up.
