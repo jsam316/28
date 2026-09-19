@@ -30,8 +30,8 @@ export function GameEndOverlay({ winner, baseCards, totalBaseCards, lastResult, 
             </p>
             <p className={lastResult.made ? 'result-made' : 'result-failed'}>
               {lastResult.made
-                ? lastResult.kappu
-                  ? 'KAPPU! They swept all 8 kai — double points!'
+                ? lastResult.fullKai
+                  ? 'FULL KAI! They swept all 8 kai!'
                   : 'Bid made!'
                 : `Bid failed — needed ${lastResult.bid}, captured only ${lastResult.pointsCaptured[lastResult.biddingTeam]}.`}
             </p>

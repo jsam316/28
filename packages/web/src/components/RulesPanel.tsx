@@ -94,7 +94,7 @@ export function RulesPanel({ onClose }: RulesPanelProps) {
             <p>
               The declaring side must capture at least as many points as their bid. The moment the defenders have
               captured more than 28 minus the bid, the round ends: the bid can no longer be made. A made bid plays out to
-              the end so a <strong>kappu</strong> (all eight kai) can be claimed.
+              the end so a <strong>full kai</strong> (all eight kai) can be claimed.
             </p>
           </section>
 

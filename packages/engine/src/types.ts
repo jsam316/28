@@ -109,7 +109,7 @@ export interface RoundResult {
   bid: number;
   pointsCaptured: [number, number];
   made: boolean;
-  kappu: boolean; // bidding team won all 8 tricks
+  fullKai: boolean; // bidding team won all 8 kai (a "full kai")
   roundWinnerTeam: 0 | 1; // biddingTeam if the bid was made, the defenders otherwise
   cardsTransferred: number; // base cards handed from the losing team to the winning team
   baseCardsAfter: [number, number]; // base-card tallies once the transfer is applied

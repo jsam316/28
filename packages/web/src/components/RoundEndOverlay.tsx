@@ -26,8 +26,8 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
         </p>
         <p className={result.made ? 'result-made' : 'result-failed'}>
           {result.made
-            ? result.kappu
-              ? 'KAPPU! They swept all 8 kai — double points!'
+            ? result.fullKai
+              ? 'FULL KAI! They swept all 8 kai!'
               : 'Bid made!'
             : `Bid failed — needed ${result.bid}, captured only ${result.pointsCaptured[result.biddingTeam]}.`}
         </p>
