@@ -9,7 +9,7 @@ interface RoundSpec {
   bidderPoints: number; // points the bidding team captures (rest go to defenders)
   baseCards?: [number, number];
   kunukku?: GameState['kunukku'];
-  kappu?: boolean;
+  fullKai?: boolean;
 }
 
 function settle(spec: RoundSpec): GameState {
@@ -22,7 +22,7 @@ function settle(spec: RoundSpec): GameState {
     kunukku: spec.kunukku,
   });
   const defender = ((spec.bidderSeat + 1) % 4) as Seat;
-  const tricks = spec.kappu
+  const tricks = spec.fullKai
     ? Array.from({ length: 8 }, (_, i) => trickWonBy(spec.bidderSeat, i === 0 ? 28 : 0, i + 1))
     : [trickWonBy(spec.bidderSeat, spec.bidderPoints, 1), trickWonBy(defender, 28 - spec.bidderPoints, 2)];
   return finishRound({ ...base, completedTricks: tricks });
@@ -39,9 +39,9 @@ describe('bid outcome', () => {
     assert.equal(s.history[0].made, false);
     assert.equal(s.history[0].roundWinnerTeam, 1);
   });
-  it('flags a kappu when the bidders take every kai', () => {
-    const s = settle({ bidderSeat: 1, bid: 20, bidderPoints: 28, kappu: true });
-    assert.equal(s.history[0].kappu, true);
+  it('flags a full kai when the bidders take every kai', () => {
+    const s = settle({ bidderSeat: 1, bid: 20, bidderPoints: 28, fullKai: true });
+    assert.equal(s.history[0].fullKai, true);
   });
 });
 

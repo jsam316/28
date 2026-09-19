@@ -29,7 +29,7 @@ export function finishRound(state: GameState): GameState {
   const bidderSeat = state.bidding.currentBidderSeat as Seat;
   const bid = state.bidding.currentBid as number;
   const made = pointsCaptured[biddingTeam] >= bid;
-  const kappu = tricksWonByTeam[biddingTeam] === 8;
+  const fullKai = tricksWonByTeam[biddingTeam] === 8;
 
   // The base-card exchange: the losing team hands base cards to the winners.
   // The bid tier sets the stake automatically: 20-23 doubles it, 24+
@@ -93,7 +93,7 @@ export function finishRound(state: GameState): GameState {
   const log = [
     ...state.log,
     made
-      ? `Bidding team captured ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid made${kappu ? ' with a KAPPU (all 8 kai)!' : '.'}`
+      ? `Bidding team captured ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid made${fullKai ? ' with a FULL KAI (all 8 kai)!' : '.'}`
       : `Bidding team captured only ${pointsCaptured[biddingTeam]} pts (needed ${bid}) — bid failed.`,
     cardsTransferred > 0
       ? `Team ${teamLabel(roundLoserTeam)} hands over ${cardsTransferred} base card${cardsTransferred > 1 ? 's' : ''}${reason ? ` (stakes: ${reason})` : ''}. Base cards: Team A ${baseCards[0]} - Team B ${baseCards[1]}.`
@@ -132,7 +132,7 @@ export function finishRound(state: GameState): GameState {
     bid,
     pointsCaptured,
     made,
-    kappu,
+    fullKai,
     roundWinnerTeam,
     cardsTransferred,
     baseCardsAfter: baseCards,
