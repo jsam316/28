@@ -14,7 +14,7 @@ interface BottomPanelProps {
 }
 
 // What the player needs to know when they cannot follow suit: whether their
-// trump play would be a cut (the declarer), a call (anyone else), or an
+// trump play needs a call first (nothing counts as a trump until it is exposed), or is an
 // ordinary ruff once the trump is out.
 function voidHint(view: PlayerView): { text: string; cutSuit: Card['suit'] | null } | null {
   const led = view.trick.cards[0]?.card.suit ?? null;
@@ -41,9 +41,9 @@ function voidHint(view: PlayerView): { text: string; cutSuit: Card['suit'] | nul
     const holdsTrump = view.legalCards.some((c) => c.suit === trump.suit);
     return {
       text: holdsTrump
-        ? `You can't follow ${suitName(led)}. Play a ${suitSymbol(trump.suit)} card to CUT — that exposes your trump and wins over the suit led — or discard another suit to keep it hidden.`
-        : `You can't follow ${suitName(led)} and hold no other trump. Cut with your set-aside card, or discard to keep the trump hidden.`,
-      cutSuit: trump.suit,
+        ? `You can't follow ${suitName(led)}. Tap Call for trump to expose your ${suitSymbol(trump.suit)} and then trump the kai — a ${suitSymbol(trump.suit)} played without calling is only a discard. Or discard another suit to keep the trump hidden.`
+        : `You can't follow ${suitName(led)}. Your only trump is the set-aside card: tap Call for trump to expose it and play it, or discard to keep the trump hidden.`,
+      cutSuit: holdsTrump ? trump.suit : null,
     };
   }
   return {
