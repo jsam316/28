@@ -233,8 +233,12 @@ function chooseFollow(ctx: TrickContext): Card {
 }
 
 function chooseDiscard(ctx: TrickContext): Card {
-  const { legal, activeTrump, best, profile, memory } = ctx;
-  const nonTrump = activeTrump ? legal.filter((c) => c.suit !== activeTrump) : legal;
+  const { legal, activeTrump, best, profile, memory, view } = ctx;
+  // Ruffing only works once the trump has been revealed - except for the
+  // bidder, whose cut with a trump-suit card exposes it as it is played.
+  const isBidder = view.trump.chosenBySeat === view.you;
+  const ruffSuit = activeTrump ?? (isBidder ? ctx.knownTrump : null);
+  const nonTrump = ruffSuit ? legal.filter((c) => c.suit !== ruffSuit) : legal;
   const pool = nonTrump.length > 0 ? nonTrump : legal;
 
   if (ctx.partnerWinning) {
@@ -242,10 +246,9 @@ function chooseDiscard(ctx: TrickContext): Card {
     return [...pool].sort(byCostAsc)[0];
   }
 
-  // Ruffing only works once the trump has been revealed.
-  if (activeTrump) {
-    const trumps = legal.filter((c) => c.suit === activeTrump);
-    const currentTrumpStrength = best.card.suit === activeTrump ? cardStrength(best.card) : -1;
+  if (ruffSuit) {
+    const trumps = legal.filter((c) => c.suit === ruffSuit);
+    const currentTrumpStrength = activeTrump && best.card.suit === activeTrump ? cardStrength(best.card) : -1;
     const winningTrumps = trumps.filter((c) => cardStrength(c) > currentTrumpStrength).sort(byStrengthAsc);
     if (winningTrumps.length > 0) {
       // A trump is worth more than a pointless kai unless we are flush with them.
@@ -256,7 +259,7 @@ function chooseDiscard(ctx: TrickContext): Card {
           const overruff = ctx.opponentsAfter.some(
             (s) =>
               isKnownVoid(memory, s, ctx.ledSuit) &&
-              unseenInSuit(memory, activeTrump).some((c) => cardStrength(c) > cardStrength(winningTrumps[0]))
+              unseenInSuit(memory, ruffSuit).some((c) => cardStrength(c) > cardStrength(winningTrumps[0]))
           );
           if (overruff) {
             const boss = winningTrumps.find((c) => isBoss(c, memory));

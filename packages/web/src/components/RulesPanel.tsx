@@ -84,8 +84,13 @@ export function RulesPanel({ onClose }: RulesPanelProps) {
               A player who cannot follow suit may <strong>call for the trump</strong>. The declarer shows the card, it
               returns to their hand, and from then on the trump suit beats everything. The caller must play a trump to
               that kai if they hold one; after that, trumping is never compulsory. A trump-suit card played before the
-              call was just a discard and never counts as a trump. If nobody calls, the declarer's last card is the trump
-              itself and it is exposed as it is played.
+              call was just a discard and never counts as a trump.
+            </p>
+            <p>
+              The declarer, who knows the trump, may instead <strong>cut</strong>: unable to follow suit, they play a
+              card of the trump suit (the set-aside card itself, or another trump from hand). That exposes the trump on
+              the spot and the cut counts as a trump. Discarding another suit keeps it hidden, and if nobody ever calls
+              or cuts, the declarer's last card is the trump itself and is exposed as it is played.
             </p>
           </section>
 

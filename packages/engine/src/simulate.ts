@@ -65,6 +65,9 @@ function legalPlays(sim: SimState, seat: Seat): Card[] {
   if (led !== null) {
     const followers = hand.filter((c) => c.suit === led);
     if (followers.length > 0) legal = followers;
+    else if (sim.chosenBySeat === seat && !sim.revealed && sim.trumpCard && !hand.some((c) => cardId(c) === cardId(sim.trumpCard as Card))) {
+      legal = [...hand, sim.trumpCard]; // the bidder may cut with the set-aside card
+    }
   }
   if (sim.mustTrumpSeat === seat && sim.revealed) {
     const trumps = legal.filter((c) => c.suit === sim.trumpSuit);
@@ -106,8 +109,11 @@ function applyReveal(sim: SimState, seat: Seat) {
 }
 
 function applyPlay(sim: SimState, seat: Seat, card: Card) {
-  if (!sim.revealed && sim.trumpCard && sim.chosenBySeat === seat && cardId(card) === cardId(sim.trumpCard)) {
-    sim.revealed = true; // forced exposure of the last card
+  if (!sim.revealed && sim.trumpCard && sim.chosenBySeat === seat) {
+    const led = sim.trick[0]?.card.suit ?? null;
+    const isAside = cardId(card) === cardId(sim.trumpCard);
+    const cutting = led !== null && led !== sim.trumpSuit && card.suit === sim.trumpSuit;
+    if (isAside || cutting) sim.revealed = true; // the bidder cuts, or plays the last card
   }
   sim.hands[seat] = sim.hands[seat].filter((c) => cardId(c) !== cardId(card));
   sim.trick.push({ seat, card, playedAfterReveal: sim.revealed });

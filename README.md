@@ -15,6 +15,9 @@ A web app for **28 (Twenty-Eight)**, the trick-taking card game played across Ke
 
 ## Around the table
 
+- **Cutting** — the declarer, who knows the trump, can cut a kai by playing a trump-suit card
+  (or the set-aside card itself) when unable to follow suit; that exposes the trump on the spot
+  and the cut counts. Anyone else must call for the trump first.
 - **How to play** — the full rule set, house rules included, from the home screen or the `?` button
   at the table.
 - **Sound** — synthesised effects (cards, kai sweep, trump call, bids, your turn, round result)

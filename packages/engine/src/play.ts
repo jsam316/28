@@ -26,13 +26,19 @@ export function requestTrumpReveal(state: GameState, seat: Seat): GameState {
   };
 }
 
+// The bidder's set-aside trump card, while it is still concealed.
+function concealedAside(state: GameState, seat: Seat): Card | null {
+  const t = state.trump;
+  return t.chosenBySeat === seat && !t.revealed && t.card ? t.card : null;
+}
+
 // The cards a seat may actually play right now. The bidder's set-aside trump
 // card is held back while it stays concealed - it does not count for following
 // suit either - unless it is the only card the bidder has left.
 export function playableHand(state: GameState, seat: Seat): Card[] {
-  const t = state.trump;
-  if (t.chosenBySeat === seat && !t.revealed && t.card) {
-    const rest = state.hands[seat].filter((c) => cardId(c) !== cardId(t.card as Card));
+  const aside = concealedAside(state, seat);
+  if (aside) {
+    const rest = state.hands[seat].filter((c) => cardId(c) !== cardId(aside));
     return rest.length > 0 ? rest : state.hands[seat];
   }
   return state.hands[seat];
@@ -40,10 +46,17 @@ export function playableHand(state: GameState, seat: Seat): Card[] {
 
 // The cards a seat may legally play to the current trick: follow suit if
 // possible (the concealed set-aside trump neither plays nor forces a follow),
-// and a player who just called for the trump must trump if able.
+// a bidder who cannot follow may cut with the set-aside card itself, and a
+// player who just called for the trump must trump if able.
 function legalPlaysFor(state: GameState, seat: Seat): Card[] {
   const ledSuit = state.trick.cards[0]?.card.suit ?? null;
-  const base = legalCardsFor(playableHand(state, seat), ledSuit);
+  const playable = playableHand(state, seat);
+  let base = legalCardsFor(playable, ledSuit);
+  const aside = concealedAside(state, seat);
+  const void_ = ledSuit !== null && !playable.some((c) => c.suit === ledSuit);
+  if (aside && void_ && !base.some((c) => cardId(c) === cardId(aside))) {
+    base = [...base, aside];
+  }
   if (state.mustTrumpSeat === seat && state.trump.revealed && state.trump.suit) {
     const trumps = base.filter((c) => c.suit === state.trump.suit);
     if (trumps.length > 0) return trumps;
@@ -70,18 +83,26 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
 
   const log: string[] = [];
 
-  // If nobody ever called for the trump, the bidder's last card is the
-  // set-aside trump itself - playing it exposes it, and from that moment it
-  // counts as a trump.
+  // The bidder exposes the trump by cutting with it: unable to follow suit,
+  // they play a card of the trump suit (the set-aside card itself, or another
+  // trump from hand) and from that moment it counts as a trump. Playing the
+  // set-aside card at any other time (it is the last card left) exposes it
+  // too. Following suit with a trump when trumps are led, or discarding
+  // something else, keeps it concealed.
   let trump = state.trump;
-  if (
-    !trump.revealed &&
-    trump.card &&
-    trump.chosenBySeat === seat &&
-    cardId(card) === cardId(trump.card)
-  ) {
-    trump = { ...trump, revealed: true };
-    log.push(`${playerName(state.players, seat)} is forced to expose the trump: ${card.rank}${card.suit}.`);
+  const aside = trump.card;
+  const ledSuit = state.trick.cards[0]?.card.suit ?? null;
+  if (!trump.revealed && aside && trump.chosenBySeat === seat) {
+    const isAside = cardId(card) === cardId(aside);
+    const cutting = ledSuit !== null && ledSuit !== trump.suit && card.suit === trump.suit;
+    if (isAside || cutting) {
+      trump = { ...trump, revealed: true };
+      log.push(
+        cutting
+          ? `${playerName(state.players, seat)} cuts with the trump: ${card.rank}${card.suit} — trump exposed (${aside.rank}${aside.suit}).`
+          : `${playerName(state.players, seat)} is forced to expose the trump: ${card.rank}${card.suit}.`
+      );
+    }
   }
 
   const hands = structuredClone(state.hands) as GameState['hands'];
