@@ -1228,3 +1228,22 @@ h3 {
   padding: 0.4rem 0.9rem;
   font-size: 0.85rem;
 }
+
+/* ---------- Void hint (cut / call) ---------- */
+
+.void-hint {
+  max-width: 640px;
+  margin-bottom: 0.35rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(212, 175, 55, 0.16);
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  color: #f7ecc8;
+  font-size: 0.85rem;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.hand-slot-trump .card {
+  box-shadow: 0 0 0 3px var(--gold), 0 6px 14px rgba(0, 0, 0, 0.45);
+}

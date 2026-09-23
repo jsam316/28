@@ -127,7 +127,13 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
   const activeTrump = trump.revealed ? trump.suit : null;
   const completed = resolveTrick(trick.cards, activeTrump, trick.trickNumber);
   const completedTricks = [...state.completedTricks, completed];
-  log.push(`${playerName(state.players, completed.winnerSeat)} wins the kai (${completed.points} pts).`);
+  const winningCard = trick.cards.find((pc) => pc.seat === completed.winnerSeat)?.card;
+  const byTrump = winningCard && winningCard.suit !== trick.cards[0].card.suit;
+  log.push(
+    `${playerName(state.players, completed.winnerSeat)} wins the kai (${completed.points} pts)${
+      byTrump ? ` with the trump ${winningCard.rank}${winningCard.suit}` : ''
+    }.`
+  );
 
   if (completedTricks.length === 8) {
     return finishRound({ ...state, hands, trick, trump, mustTrumpSeat, completedTricks, log: appendLog(state, ...log) });

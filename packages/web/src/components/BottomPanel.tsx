@@ -4,12 +4,49 @@ import { TrumpPanel } from './TrumpPanel';
 import { Hand } from './Hand';
 import { PlayingCard } from './Card';
 import type { GameScreenActions } from './GameScreen';
+import { suitName, suitSymbol } from '../utils/cards';
 
 interface BottomPanelProps {
   view: PlayerView;
   displayHand: Card[];
   currentTurnSeat: Seat | null;
   actions: GameScreenActions;
+}
+
+// What the player needs to know when they cannot follow suit: whether their
+// trump play would be a cut (the declarer), a call (anyone else), or an
+// ordinary ruff once the trump is out.
+function voidHint(view: PlayerView): { text: string; cutSuit: Card['suit'] | null } | null {
+  const led = view.trick.cards[0]?.card.suit ?? null;
+  if (led === null) return null;
+  if (view.legalCards.some((c) => c.suit === led)) return null;
+  const trump = view.trump;
+  const isDeclarer = trump.chosenBySeat === view.you;
+  if (trump.revealed && trump.suit) {
+    if (view.legalCards.every((c) => c.suit === trump.suit) && view.legalCards.length > 0) {
+      return { text: `You called for the trump, so you must play a ${suitName(trump.suit)} card.`, cutSuit: trump.suit };
+    }
+    const holdsTrump = view.legalCards.some((c) => c.suit === trump.suit);
+    return {
+      text: holdsTrump
+        ? `You can't follow ${suitName(led)}. Trump with ${suitSymbol(trump.suit)} to take the kai, or discard.`
+        : `You can't follow ${suitName(led)}. Discard any card.`,
+      cutSuit: holdsTrump ? trump.suit : null,
+    };
+  }
+  if (isDeclarer && trump.suit) {
+    const holdsTrump = view.legalCards.some((c) => c.suit === trump.suit);
+    return {
+      text: holdsTrump
+        ? `You can't follow ${suitName(led)}. Play a ${suitSymbol(trump.suit)} card to CUT — that exposes your trump and wins over the suit led — or discard another suit to keep it hidden.`
+        : `You can't follow ${suitName(led)} and hold no other trump. Cut with your set-aside card, or discard to keep the trump hidden.`,
+      cutSuit: trump.suit,
+    };
+  }
+  return {
+    text: `You can't follow ${suitName(led)}. Tap Call for trump to expose it (you must then trump if you can), or discard — a trump played without calling does not count.`,
+    cutSuit: null,
+  };
 }
 
 // Whatever the viewer can do right now: bid, set a trump aside, call for the
@@ -57,14 +94,27 @@ export function BottomPanel({ view, displayHand, currentTurnSeat, actions }: Bot
   }
 
   if (view.phase === 'playing') {
+    const yourTurn = currentTurnSeat === you;
+    const hint = yourTurn ? voidHint(view) : null;
     return (
       <>
+        {hint && (
+          <div className="void-hint" role="status">
+            {hint.text}
+          </div>
+        )}
         {view.canRequestTrumpReveal && (
           <button type="button" className="btn btn-call-trump" onClick={actions.callTrump}>
             Call for trump <kbd className="key-hint">T</kbd>
           </button>
         )}
-        <Hand cards={displayHand} legalCards={view.legalCards} canPlay={currentTurnSeat === you} onPlay={actions.play} />
+        <Hand
+          cards={displayHand}
+          legalCards={view.legalCards}
+          canPlay={yourTurn}
+          highlightSuit={hint?.cutSuit ?? null}
+          onPlay={actions.play}
+        />
       </>
     );
   }
