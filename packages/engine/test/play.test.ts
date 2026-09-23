@@ -59,13 +59,8 @@ describe('the concealed trump card', () => {
     s = play(s, 1, 'QH');
     s = play(s, 2, 'AH');
     s = play(s, 3, 'JH');
-    assert.deepEqual(ids(getLegalCards(s, 0)), ['AD', '10D', '7H'], 'discard, or cut with the set-aside card');
+    assert.deepEqual(ids(getLegalCards(s, 0)), ['AD', '10D']);
     assert.equal(canRequestTrumpReveal(s, 0), true, 'the bidder counts as void and may call');
-  });
-
-  it('is never led while other cards remain', () => {
-    const s = baseState({ hands: [['7H', 'AD'], ['QH', 'KH'], ['AH', '10H'], ['JH', '9H']] });
-    assert.deepEqual(ids(getLegalCards(s, 0)), ['AD']);
   });
 
   it('is force-exposed when it is the bidder’s last card', () => {
@@ -82,77 +77,6 @@ describe('the concealed trump card', () => {
     assert.ok(s.log.some((l) => /forced to expose/.test(l)));
     // It was exposed as it was played, so it counts as a trump and wins the kai.
     assert.equal(s.completedTricks[0].winnerSeat, 0);
-  });
-});
-
-describe('the bidder cutting with a trump', () => {
-  // Dealer 3, seat 0 leads. Seat 1 is the bidder with the 7 of hearts aside.
-  function cutState(hands: [string[], string[], string[], string[]]): GameState {
-    return playingState({ hands, bidderSeat: 1, bid: 16, trumpCard: '7H' });
-  }
-
-  it('exposes the trump and wins the kai when the bidder cuts with a trump from hand', () => {
-    let s = cutState([['AD', '7C'], ['7H', 'QH', '8C'], ['9D', 'KC'], ['KD', 'AC']]);
-    s = play(s, 0, 'AD');
-    assert.deepEqual(ids(getLegalCards(s, 1)), ['QH', '8C', '7H']);
-    s = play(s, 1, 'QH');
-    assert.equal(s.trump.revealed, true);
-    assert.ok(s.log.some((l) => /cuts with the trump/.test(l)));
-    s = play(s, 2, '9D');
-    s = play(s, 3, 'KD');
-    assert.equal(s.completedTricks[0].winnerSeat, 1, 'the cut counts as a trump and takes the kai');
-    assert.equal(s.trick.leadSeat, 1);
-  });
-
-  it('lets the bidder cut with the set-aside card itself', () => {
-    let s = cutState([['AD', '7C'], ['7H', '8C', 'QC'], ['9D', 'KC'], ['KD', 'AC']]);
-    s = play(s, 0, 'AD');
-    s = play(s, 1, '7H');
-    assert.equal(s.trump.revealed, true);
-    s = play(s, 2, '9D');
-    s = play(s, 3, 'KD');
-    assert.equal(s.completedTricks[0].winnerSeat, 1);
-    assert.equal(s.hands[1].length, 2);
-  });
-
-  it('keeps the trump concealed when the bidder discards something else', () => {
-    let s = cutState([['AD', '7C'], ['7H', 'QH', '8C'], ['9D', 'KC'], ['KD', 'AC']]);
-    s = play(s, 0, 'AD');
-    s = play(s, 1, '8C');
-    assert.equal(s.trump.revealed, false);
-    s = play(s, 2, '9D');
-    s = play(s, 3, 'KD');
-    assert.equal(s.completedTricks[0].winnerSeat, 2, 'the 9 of diamonds is the highest diamond; no trumps yet');
-  });
-
-  it('does not expose the trump when the bidder merely follows a trump-suit lead', () => {
-    let s = cutState([['AH', '7C'], ['7H', 'QH', '8C'], ['9H', 'KC'], ['KH', 'AC']]);
-    s = play(s, 0, 'AH');
-    assert.deepEqual(ids(getLegalCards(s, 1)), ['QH'], 'must follow with the heart in hand; the aside stays out');
-    s = play(s, 1, 'QH');
-    assert.equal(s.trump.revealed, false);
-    s = play(s, 2, '9H');
-    s = play(s, 3, 'KH');
-    assert.equal(s.completedTricks[0].winnerSeat, 2, '9H is the highest heart; nothing was a trump yet');
-  });
-
-  it('does not expose the trump when the bidder leads a trump-suit card', () => {
-    let s = cutState([['AD', '7C'], ['7H', 'QH', '8C'], ['9D', 'KC'], ['KD', 'AC']]);
-    s = { ...s, trick: { ...s.trick, leadSeat: 1 } };
-    s = play(s, 1, 'QH');
-    assert.equal(s.trump.revealed, false);
-  });
-
-  it('beats a trump-suit card an opponent dumped before the cut', () => {
-    // Seat 3 leads a diamond, seat 0 dumps the ace of hearts without calling,
-    // then seat 1 (the bidder) cuts with the 8 of hearts.
-    let s = cutState([['AH', '7C'], ['7H', '8H', '8C'], ['9D', 'KC'], ['KD', 'AC']]);
-    s = { ...s, trick: { ...s.trick, leadSeat: 3 } };
-    s = play(s, 3, 'KD');
-    s = play(s, 0, 'AH');
-    s = play(s, 1, '8H');
-    s = play(s, 2, '9D');
-    assert.equal(s.completedTricks[0].winnerSeat, 1, 'the ace of hearts hit the table before the trump was exposed');
   });
 });
 

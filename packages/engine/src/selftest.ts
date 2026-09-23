@@ -94,22 +94,17 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
       pendingMustTrump = seat;
       revealStats.calls++;
     } else if (action.type === 'play') {
-      // The bidder may only play the concealed trump card as a cut (void in
-      // the suit led) or as their last card - never lead it while others remain.
+      // The bidder must not be able to play their concealed trump card unless
+      // it is the only legal card they have left.
       const t = s.trump;
       if (
         t.chosenBySeat === seat &&
         !t.revealed &&
         t.card &&
         `${action.card.rank}${action.card.suit}` === `${t.card.rank}${t.card.suit}` &&
-        s.trick.cards.length === 0 &&
         view.legalCards.length > 1
       ) {
-        throw new Error('Bidder led the concealed trump card while other cards were available');
-      }
-      if (t.chosenBySeat === seat && !t.revealed && s.trick.cards.length > 0) {
-        const led = s.trick.cards[0].card.suit;
-        if (led !== t.suit && action.card.suit === t.suit) revealStats.cuts++;
+        throw new Error('Bidder played the concealed trump card while other legal cards were available');
       }
       // Having called for the trump, the caller must trump if able.
       if (pendingMustTrump === seat) {
@@ -144,7 +139,7 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
 }
 
 const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0, zeroStrips: 0 };
-const revealStats = { calls: 0, forcedTrumps: 0, cuts: 0 };
+const revealStats = { calls: 0, forcedTrumps: 0 };
 let redealCount = 0;
 let fourJacksRedeals = 0;
 
@@ -309,5 +304,5 @@ console.log(
 );
 console.log(`Pointless-hand redeals demanded by the opener: ${redealCount}. Four-Jacks redeals: ${fourJacksRedeals}.`);
 console.log(
-  `Trump calls: ${revealStats.calls}, of which the caller held (and was forced to play) a trump: ${revealStats.forcedTrumps}. Bidder cuts that exposed the trump: ${revealStats.cuts}.`
+  `Trump calls: ${revealStats.calls}, of which the caller held (and was forced to play) a trump: ${revealStats.forcedTrumps}.`
 );

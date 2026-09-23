@@ -107,16 +107,14 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
 
   // The bidder's set-aside trump is held out of their playable hand while
   // concealed, so hide it from their own hand display too (it shows beside the
-  // seat instead) until the trump is revealed and it returns to hand - except
-  // when the bidder cannot follow suit and may cut with it, when it is offered
-  // among the legal cards.
+  // seat instead) until the trump is revealed and it returns to hand.
   const concealedTrumpId =
     trumpHolder === you && !view.trump.revealed && view.trump.card
       ? `${view.trump.card.rank}${view.trump.card.suit}`
       : null;
-  const asideIsLegal = concealedTrumpId !== null && view.legalCards.some((c) => `${c.rank}${c.suit}` === concealedTrumpId);
-  const displayHand =
-    concealedTrumpId && !asideIsLegal ? view.hand.filter((c) => `${c.rank}${c.suit}` !== concealedTrumpId) : view.hand;
+  const displayHand = concealedTrumpId
+    ? view.hand.filter((c) => `${c.rank}${c.suit}` !== concealedTrumpId)
+    : view.hand;
 
   useGameSounds(view, ROUND_END_REVEAL_DELAY_MS);
   useCardHotkeys({
