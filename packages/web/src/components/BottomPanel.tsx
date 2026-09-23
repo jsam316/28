@@ -22,6 +22,7 @@ function voidHint(view: PlayerView): { text: string; cutSuit: Card['suit'] | nul
   if (view.legalCards.some((c) => c.suit === led)) return null;
   const trump = view.trump;
   const isDeclarer = trump.chosenBySeat === view.you;
+  const declarer = view.players.find((p) => p.seat === trump.chosenBySeat)?.name ?? 'the declarer';
   if (trump.revealed && trump.suit) {
     if (view.legalCards.every((c) => c.suit === trump.suit) && view.legalCards.length > 0) {
       return { text: `You called for the trump, so you must play a ${suitName(trump.suit)} card.`, cutSuit: trump.suit };
@@ -30,7 +31,9 @@ function voidHint(view: PlayerView): { text: string; cutSuit: Card['suit'] | nul
     return {
       text: holdsTrump
         ? `You can't follow ${suitName(led)}. Trump with ${suitSymbol(trump.suit)} to take the kai, or discard.`
-        : `You can't follow ${suitName(led)}. Discard any card.`,
+        : led === trump.suit
+          ? `Trumps (${suitName(led)}) were led and you hold none, so whatever you play is a discard.`
+          : `You can't follow ${suitName(led)}. Trump is ${suitName(trump.suit)} and you hold none, so whatever you play is a discard — the highest ${suitName(led)} card wins unless someone trumps.`,
       cutSuit: holdsTrump ? trump.suit : null,
     };
   }
@@ -44,7 +47,7 @@ function voidHint(view: PlayerView): { text: string; cutSuit: Card['suit'] | nul
     };
   }
   return {
-    text: `You can't follow ${suitName(led)}. Tap Call for trump to expose it (you must then trump if you can), or discard — a trump played without calling does not count.`,
+    text: `You can't follow ${suitName(led)}. ${declarer} holds the bid and only they know the trump. Tap Call for trump to expose it (you must then trump if you can), or discard — nothing you play without calling counts as a trump.`,
     cutSuit: null,
   };
 }

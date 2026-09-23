@@ -1281,3 +1281,14 @@ h3 {
   max-width: calc(100vw - 2rem);
   text-align: center;
 }
+
+.trump-banner-unknown {
+  opacity: 0.9;
+}
+
+.trump-banner-suit.unknown {
+  color: #cfd8d3;
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+  border-radius: 6px;
+  padding: 0 0.4rem;
+}

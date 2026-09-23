@@ -173,8 +173,15 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
         </div>
       )}
 
-      {view.phase === 'playing' && view.trump.suit && (
-        <TrumpBanner suit={view.trump.suit} card={view.trump.card} revealed={view.trump.revealed} />
+      {view.phase === 'playing' && view.bidding.currentBidderSeat !== null && (
+        <TrumpBanner
+          declarerName={players.find((p) => p.seat === view.bidding.currentBidderSeat)?.name ?? 'The declarer'}
+          bid={view.bidding.currentBid ?? 0}
+          isDeclarer={view.bidding.currentBidderSeat === you}
+          suit={view.trump.suit}
+          card={view.trump.card}
+          revealed={view.trump.revealed}
+        />
       )}
 
       <div className="table">
