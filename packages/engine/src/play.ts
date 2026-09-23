@@ -127,11 +127,14 @@ export function playCard(state: GameState, seat: Seat, card: Card): GameState {
   const activeTrump = trump.revealed ? trump.suit : null;
   const completed = resolveTrick(trick.cards, activeTrump, trick.trickNumber);
   const completedTricks = [...state.completedTricks, completed];
-  const winningCard = trick.cards.find((pc) => pc.seat === completed.winnerSeat)?.card;
-  const byTrump = winningCard && winningCard.suit !== trick.cards[0].card.suit;
+  // Name the winning card whenever a trump decided it - including when the
+  // trump suit itself was led, where the "higher card of the kai" is also the
+  // higher trump - so an overcut is never a mystery.
+  const winningPlay = trick.cards.find((pc) => pc.seat === completed.winnerSeat);
+  const byTrump = !!winningPlay && activeTrump !== null && winningPlay.card.suit === activeTrump && winningPlay.playedAfterReveal;
   log.push(
     `${playerName(state.players, completed.winnerSeat)} wins the kai (${completed.points} pts)${
-      byTrump ? ` with the trump ${winningCard.rank}${winningCard.suit}` : ''
+      byTrump ? ` with the trump ${winningPlay.card.rank}${winningPlay.card.suit}` : ''
     }.`
   );
 

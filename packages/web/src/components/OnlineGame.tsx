@@ -26,7 +26,7 @@ function useWakingHint(active: boolean): boolean {
 }
 
 export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
-  const { status, error, seat, room, view, startGame, setReady, bid, redeal, pickTrump, callTrump, play, nextRound } =
+  const { status, error, notice, seat, room, view, startGame, setReady, bid, redeal, pickTrump, callTrump, play, nextRound } =
     useOnlineGame(name, roomCode);
   const [baseCards, setBaseCards] = useState(6);
   const wakingHint = useWakingHint(status === 'connecting' || status === 'reconnecting');
@@ -154,6 +154,7 @@ export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
       onExit={onExit}
       exitLabel="Leave room"
       banner={reconnectBanner}
+      notice={notice ? `${notice.text}\u200b${notice.at}` : null}
     />
   );
 }

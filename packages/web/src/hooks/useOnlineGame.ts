@@ -26,6 +26,7 @@ export function useOnlineGame(name: string, roomCode: string) {
   const socketRef = useRef(getSocket());
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; at: number } | null>(null);
   const [seat, setSeat] = useState<Seat | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [view, setView] = useState<PlayerView | null>(null);
@@ -52,6 +53,7 @@ export function useOnlineGame(name: string, roomCode: string) {
     }
     function onError({ message }: { message: string }) {
       setError(message);
+      setNotice({ text: message, at: Date.now() });
       setStatus((prev) => (prev === 'connected' ? prev : 'error'));
     }
     function onDisconnect() {
@@ -132,6 +134,7 @@ export function useOnlineGame(name: string, roomCode: string) {
   return {
     status,
     error,
+    notice,
     seat,
     room,
     view,

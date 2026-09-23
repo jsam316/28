@@ -1247,3 +1247,37 @@ h3 {
 .hand-slot-trump .card {
   box-shadow: 0 0 0 3px var(--gold), 0 6px 14px rgba(0, 0, 0, 0.45);
 }
+
+/* ---------- Round log and notices ---------- */
+
+.log-list {
+  margin: 0;
+  padding-left: 1.4rem;
+  font-size: 0.88rem;
+}
+
+.log-list li {
+  margin: 0.15rem 0;
+}
+
+.log-list li:last-child {
+  color: var(--gold-light);
+  font-weight: 600;
+}
+
+.notice-toast {
+  position: fixed;
+  left: 50%;
+  top: 4.5rem;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  background: rgba(167, 40, 54, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 0.9rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  max-width: calc(100vw - 2rem);
+  text-align: center;
+}
