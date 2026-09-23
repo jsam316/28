@@ -2,7 +2,7 @@ import http from 'node:http';
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
-import type { Card, Seat } from '@twenty-eight/engine';
+import { PROTOCOL_VERSION, type Card, type Seat } from '@twenty-eight/engine';
 import { cleanupStaleRooms, findOpenSeat, getOrCreateRoom, touch } from './rooms.js';
 import {
   applyBid,
@@ -31,7 +31,9 @@ const ORIGIN: string | string[] = process.env.CLIENT_ORIGIN
 
 const app = express();
 app.use(cors({ origin: ORIGIN }));
-app.get('/health', (_req, res) => res.json({ ok: true }));
+// Render sets RENDER_GIT_COMMIT on every deploy; /health shows what is running.
+const COMMIT = (process.env.RENDER_GIT_COMMIT ?? process.env.GIT_COMMIT ?? 'unknown').slice(0, 7);
+app.get('/health', (_req, res) => res.json({ ok: true, protocol: PROTOCOL_VERSION, commit: COMMIT }));
 
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
@@ -80,7 +82,7 @@ io.on('connection', (socket) => {
       data.roomCode = code;
       data.seat = seat;
       socket.join(code);
-      socket.emit('room:joined', { roomCode: code, seat });
+      socket.emit('room:joined', { roomCode: code, seat, protocol: PROTOCOL_VERSION, commit: COMMIT });
       broadcastRoom(io, room);
       // A returning human takes back a seat a bot may have been playing.
       scheduleBots(io, room);

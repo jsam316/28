@@ -10,6 +10,7 @@ import { RoundEndOverlay } from './RoundEndOverlay';
 import { GameEndOverlay } from './GameEndOverlay';
 import { BottomPanel } from './BottomPanel';
 import { RulesPanel } from './RulesPanel';
+import { LogPanel } from './LogPanel';
 import { SoundToggle } from './SoundToggle';
 import { useGameSounds } from '../hooks/useGameSounds';
 import { useCardHotkeys } from '../hooks/useCardHotkeys';
@@ -32,6 +33,9 @@ interface GameScreenProps {
   exitLabel?: string;
   // Shown across the top of the table (e.g. "Reconnecting...").
   banner?: string | null;
+  // A rejected action (an illegal card, a refused call): shown briefly so a
+  // tap that did nothing is never silent.
+  notice?: string | null;
 }
 
 // Hold the table long enough for the final kai to rest and sweep before the
@@ -69,12 +73,24 @@ function useRevealedAside(view: PlayerView): Card | null {
   return card;
 }
 
-export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitLabel = 'Home', banner }: GameScreenProps) {
+export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitLabel = 'Home', banner, notice }: GameScreenProps) {
   const { you, players } = view;
   const currentTurnSeat = getCurrentActorSeat(view);
   const lastResult = view.history[view.history.length - 1];
   const [showRules, setShowRules] = useState(false);
   const closeRules = useCallback(() => setShowRules(false), []);
+  const [showLog, setShowLog] = useState(false);
+  const closeLog = useCallback(() => setShowLog(false), []);
+
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    // The caller appends a zero-width space and a timestamp so the same
+    // message twice in a row still re-triggers the toast; show only the text.
+    setToast(notice.split('\u200b')[0]);
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const revealOverlay = useDelayedOverlay(view.phase);
   const showTable = view.phase === 'playing' || ((view.phase === 'round_end' || view.phase === 'game_end') && !revealOverlay);
@@ -102,7 +118,7 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
 
   useGameSounds(view, ROUND_END_REVEAL_DELAY_MS);
   useCardHotkeys({
-    enabled: view.phase === 'playing' && currentTurnSeat === you && !showRules,
+    enabled: view.phase === 'playing' && currentTurnSeat === you && !showRules && !showLog,
     hand: displayHand,
     legalCards: view.legalCards,
     canCallTrump: view.canRequestTrumpReveal,
@@ -123,6 +139,9 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
           <span />
         )}
         <div className="toolbar-actions">
+          <button type="button" className="icon-btn" onClick={() => setShowLog(true)} aria-label="Round log" title="Round log">
+            <span aria-hidden="true">≡</span>
+          </button>
           <button type="button" className="icon-btn" onClick={() => setShowRules(true)} aria-label="How to play" title="How to play">
             <span aria-hidden="true">?</span>
           </button>
@@ -152,8 +171,15 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
         </div>
       )}
 
-      {view.phase === 'playing' && view.trump.suit && (
-        <TrumpBanner suit={view.trump.suit} card={view.trump.card} revealed={view.trump.revealed} />
+      {view.phase === 'playing' && view.bidding.currentBidderSeat !== null && (
+        <TrumpBanner
+          declarerName={players.find((p) => p.seat === view.bidding.currentBidderSeat)?.name ?? 'The declarer'}
+          bid={view.bidding.currentBid ?? 0}
+          isDeclarer={view.bidding.currentBidderSeat === you}
+          suit={view.trump.suit}
+          card={view.trump.card}
+          revealed={view.trump.revealed}
+        />
       )}
 
       <div className="table">
@@ -200,7 +226,14 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
         />
       )}
 
+      {toast && (
+        <div className="notice-toast" role="alert">
+          {toast}
+        </div>
+      )}
+
       {showRules && <RulesPanel onClose={closeRules} />}
+      {showLog && <LogPanel log={view.log} onClose={closeLog} />}
     </div>
   );
 }

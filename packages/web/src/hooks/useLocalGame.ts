@@ -126,13 +126,15 @@ export function useLocalGame(
   const view: PlayerView = getPlayerView(state, HUMAN_SEAT);
 
   // Every human action goes through the engine, which throws on anything
-  // illegal; the state is simply left alone in that case.
+  // illegal; the state is left alone and the reason is surfaced to the UI.
+  const [notice, setNotice] = useState<{ text: string; at: number } | null>(null);
   const attempt = useCallback((fn: (prev: GameState) => GameState) => {
     setState((prev) => {
       try {
         return fn(prev);
       } catch (err) {
         console.error(err);
+        setNotice({ text: (err as Error).message, at: Date.now() });
         return prev;
       }
     });
@@ -152,6 +154,7 @@ export function useLocalGame(
   return {
     state,
     view,
+    notice,
     humanSeat: HUMAN_SEAT,
     bid,
     redeal,

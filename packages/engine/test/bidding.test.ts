@@ -85,6 +85,10 @@ describe('round one bidding', () => {
     assert.equal(s.trump.chosenBySeat, 2);
     assert.notEqual(id(s.trump.card!), id(firstTrump));
     assert.ok(s.hands[1].some((c) => id(c) === id(firstTrump)), 'earlier trump stays in the old leader hand');
+    assert.ok(
+      s.log.some((l) => l.includes('takes over the bid') && l.includes(id(firstTrump)) && l.includes('no longer the trump')),
+      'the hand-over is spelled out in the log'
+    );
   });
 });
 

@@ -46,11 +46,18 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
   // Every leading bid is followed by that bidder setting aside a trump card
   // before the auction moves on; any trump the previous leader set aside simply
   // reverts to an ordinary card in their hand.
+  const lines = [`${playerName(state.players, seat)} bids ${action}.`];
+  const previous = state.trump.chosenBySeat;
+  if (previous !== null && previous !== seat && state.trump.card) {
+    lines.push(
+      `${playerName(state.players, seat)} takes over the bid — ${playerName(state.players, previous)}'s set-aside ${state.trump.card.rank}${state.trump.card.suit} returns to hand and is no longer the trump.`
+    );
+  }
   return {
     ...state,
     bidding,
     phase: 'trump_selection',
-    log: appendLog(state, `${playerName(state.players, seat)} bids ${action}.`),
+    log: appendLog(state, ...lines),
   };
 }
 
