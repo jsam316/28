@@ -25,6 +25,12 @@ export const CARD_POINTS: Record<Rank, number> = {
 
 export const TOTAL_POINTS = 28;
 
+// Bumped whenever the client/server messages or the rules they carry change
+// incompatibly. The server reports its value on join; a client whose value
+// differs warns that the server is out of date rather than playing a game
+// that will not follow the rules it shows.
+export const PROTOCOL_VERSION = 3;
+
 export function cardId(card: Card): string {
   return `${card.rank}${card.suit}`;
 }

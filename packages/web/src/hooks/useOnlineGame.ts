@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Card, PlayerView, Seat } from '@twenty-eight/engine';
+import { PROTOCOL_VERSION, type Card, type PlayerView, type Seat } from '@twenty-eight/engine';
 import { getSocket } from '../net/socket';
 import { getPlayerId } from '../utils/identity';
 
@@ -30,6 +30,9 @@ export function useOnlineGame(name: string, roomCode: string) {
   const [seat, setSeat] = useState<Seat | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [view, setView] = useState<PlayerView | null>(null);
+  // Set when the server answered with a different (or no) protocol version:
+  // it is running an older build and will not apply the rules this client shows.
+  const [serverMismatch, setServerMismatch] = useState<string | null>(null);
   const hadSeat = useRef(false);
 
   useEffect(() => {
@@ -39,11 +42,16 @@ export function useOnlineGame(name: string, roomCode: string) {
     function onConnect() {
       socket.emit('room:join', { roomCode, name, playerId });
     }
-    function onJoined({ seat: s }: { roomCode: string; seat: Seat }) {
+    function onJoined({ seat: s, protocol, commit }: { roomCode: string; seat: Seat; protocol?: number; commit?: string }) {
       hadSeat.current = true;
       setSeat(s);
       setStatus('connected');
       setError(null);
+      setServerMismatch(
+        protocol === PROTOCOL_VERSION
+          ? null
+          : `The game server is running an older build (server ${protocol ?? 'pre-version'}${commit ? ` @ ${commit}` : ''}, app ${PROTOCOL_VERSION}). Online games will not follow the current rules until the server is redeployed from main.`
+      );
     }
     function onRoomState(s: RoomState) {
       setRoom(s);
@@ -135,6 +143,7 @@ export function useOnlineGame(name: string, roomCode: string) {
     status,
     error,
     notice,
+    serverMismatch,
     seat,
     room,
     view,

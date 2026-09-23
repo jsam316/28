@@ -26,7 +26,7 @@ function useWakingHint(active: boolean): boolean {
 }
 
 export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
-  const { status, error, notice, seat, room, view, startGame, setReady, bid, redeal, pickTrump, callTrump, play, nextRound } =
+  const { status, error, notice, serverMismatch, seat, room, view, startGame, setReady, bid, redeal, pickTrump, callTrump, play, nextRound } =
     useOnlineGame(name, roomCode);
   const [baseCards, setBaseCards] = useState(6);
   const wakingHint = useWakingHint(status === 'connecting' || status === 'reconnecting');
@@ -79,6 +79,11 @@ export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
         {reconnectBanner && (
           <div className="connection-banner" role="status">
             {reconnectBanner}
+          </div>
+        )}
+        {serverMismatch && (
+          <div className="connection-banner" role="alert">
+            {serverMismatch}
           </div>
         )}
         <div className="home-section">
@@ -153,7 +158,7 @@ export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
       waitingForHostMessage="Waiting for a player to start the next round..."
       onExit={onExit}
       exitLabel="Leave room"
-      banner={reconnectBanner}
+      banner={serverMismatch ?? reconnectBanner}
       notice={notice ? `${notice.text}\u200b${notice.at}` : null}
     />
   );

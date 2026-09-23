@@ -33,6 +33,16 @@ A web app for **28 (Twenty-Eight)**, the trick-taking card game played across Ke
   for 20 seconds (and can reclaim it any time after, as long as the room lives) before a bot fills
   in; the lobby pre-warms the free-tier server and says so if it is still waking up.
 
+## Deploying the server
+
+The web app is built from `main` by GitHub Pages; the Socket.IO server is hosted on Render from
+`render.yaml`. The two must be deployed together: an older server silently ignores messages it
+does not understand (for example a trump chosen as a card rather than a suit) and the game then
+plays by the wrong rules. Every client checks the server's protocol version on joining a room and
+shows a red banner if they differ. To check what the server is running open `/health` on it
+(`{"ok":true,"protocol":3,"commit":"abc1234"}`); to update it, trigger **Manual Deploy → Deploy
+latest commit** in the Render dashboard if auto-deploy is off.
+
 ## Project layout
 
 This is an npm workspaces monorepo:
