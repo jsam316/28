@@ -55,7 +55,7 @@ export default defineConfig({
       manifest: {
         name: '28 - The Kerala Card Game',
         short_name: '28',
-        description: 'Play 28, the classic Kerala trick-taking card game, solo against bots or online with friends.',
+        description: 'Play 28, the classic Kerala card game, solo against bots or online with friends.',
         theme_color: '#0b6b43',
         background_color: '#06170f',
         display: 'standalone',

@@ -1,6 +1,6 @@
 # 28
 
-A web app for **28 (Twenty-Eight)**, the trick-taking card game played across Kerala.
+A web app for **28 (Twenty-Eight)**, the card game played across Kerala.
 
 - 32-card deck (7 through Ace), 4 players in 2 partnerships (opposite seats).
 - Card ranking/points: J (3) > 9 (2) > A (1) > 10 (1) > K, Q, 8, 7 (0). Total points in the deck: 28.
