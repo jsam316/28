@@ -48,7 +48,7 @@ export function Home({ onPlaySolo, onResumeSolo, onGoOnline }: HomeProps) {
         <SoundToggle />
       </div>
       <h1>28</h1>
-      <p className="subtitle">The classic Kerala trick-taking card game</p>
+      <p className="subtitle">The classic Kerala card game</p>
 
       <label className="field">
         Your name
