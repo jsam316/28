@@ -9,7 +9,7 @@ export interface Card {
 export const SUITS: Suit[] = ['S', 'H', 'D', 'C'];
 export const RANKS: Rank[] = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
-// Strength order within a suit for trick-taking, weakest to strongest.
+// Strength order within a suit when deciding who wins a kai, weakest to strongest.
 export const STRENGTH_ORDER: Rank[] = ['7', '8', 'Q', 'K', '10', 'A', '9', 'J'];
 
 export const CARD_POINTS: Record<Rank, number> = {
