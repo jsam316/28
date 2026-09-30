@@ -6,6 +6,7 @@ import { type Card, type GameState, type Seat, TOTAL_POINTS, cardId, teamOf } fr
 export function requestTrumpReveal(state: GameState, seat: Seat): GameState {
   if (state.phase !== 'playing') throw new Error('Not in playing phase');
   if (state.trump.revealed) throw new Error('Trump already revealed');
+  if (expectedPlaySeat(state.trick) !== seat) throw new Error('You can only call for trump on your turn');
   const ledSuit = state.trick.cards[0]?.card.suit ?? null;
   if (ledSuit === null) throw new Error('Cannot call for trump when leading');
   const canFollow = playableHand(state, seat).some((c) => c.suit === ledSuit);
@@ -51,13 +52,16 @@ function legalPlaysFor(state: GameState, seat: Seat): Card[] {
   return base;
 }
 
-export function playCard(state: GameState, seat: Seat, card: Card): GameState {
+export function playCard(state: GameState, seat: Seat, requested: Card): GameState {
   if (state.phase !== 'playing') throw new Error('Not in playing phase');
   if (expectedPlaySeat(state.trick) !== seat) throw new Error('Not your turn to play');
 
   const hand = state.hands[seat];
-  const idx = hand.findIndex((c) => cardId(c) === cardId(card));
+  const idx = hand.findIndex((c) => cardId(c) === cardId(requested));
   if (idx === -1) throw new Error('Card not in hand');
+  // From here on use the card object from the hand, never the caller's: a
+  // client-supplied object could carry extra fields broadcast to the table.
+  const card = hand[idx];
 
   const legal = legalPlaysFor(state, seat);
   if (!legal.some((c) => cardId(c) === cardId(card))) {

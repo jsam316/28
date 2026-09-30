@@ -29,6 +29,9 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
     return advanceBidding({ ...state, bidding }, [`${playerName(state.players, seat)} passes.`]);
   }
 
+  if (typeof action !== 'number' || !Number.isInteger(action)) {
+    throw new Error('A bid must be a whole number or a pass');
+  }
   const raisingOverPartner = isRaisingOverPartner(bidding, seat);
   const minAllowed = minNextBid(bidding.currentBid, bidding.minBid, state.secondBatchDealt, raisingOverPartner);
   if (action < minAllowed) {
@@ -49,8 +52,10 @@ export function placeBid(state: GameState, seat: Seat, action: 'pass' | number):
   const lines = [`${playerName(state.players, seat)} bids ${action}.`];
   const previous = state.trump.chosenBySeat;
   if (previous !== null && previous !== seat && state.trump.card) {
+    // Say that the old set-aside card is no longer the trump, but never name
+    // it: which card it was is still private to its owner.
     lines.push(
-      `${playerName(state.players, seat)} takes over the bid — ${playerName(state.players, previous)}'s set-aside ${state.trump.card.rank}${state.trump.card.suit} returns to hand and is no longer the trump.`
+      `${playerName(state.players, seat)} takes over the bid — ${playerName(state.players, previous)}'s set-aside card returns to their hand and is no longer the trump.`
     );
   }
   return {
@@ -134,11 +139,12 @@ function beginPlay(state: GameState, log: string[]): GameState {
 export function chooseTrump(state: GameState, seat: Seat, card: Card): GameState {
   if (state.phase !== 'trump_selection') throw new Error('Not in trump selection phase');
   if (state.bidding.currentBidderSeat !== seat) throw new Error('Only the current high bidder chooses trump');
-  if (!state.hands[seat].some((c) => cardId(c) === cardId(card))) {
-    throw new Error('Trump card must be one of your own cards');
-  }
+  // Use the card object from the hand, never the caller's: a client-supplied
+  // object could carry extra fields that would then be sent to every player.
+  const own = state.hands[seat].find((c) => cardId(c) === cardId(card));
+  if (!own) throw new Error('Trump card must be one of your own cards');
 
   // Set (or replace) the trump this bidder sets aside, then resume the auction.
-  const trump = { suit: card.suit, card, chosenBySeat: seat, revealed: false };
+  const trump = { suit: own.suit, card: own, chosenBySeat: seat, revealed: false };
   return advanceBidding({ ...state, trump }, [`${playerName(state.players, seat)} sets a trump card aside (concealed).`]);
 }
