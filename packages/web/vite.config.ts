@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { minimal2023Preset } from '@vite-pwa/assets-generator/presets'
@@ -33,6 +33,47 @@ function buildStamp() {
 
 const stamp = buildStamp()
 
+// Content Security Policy for the production build. Scripts, styles and the
+// service worker may only come from the site itself, and the page may only
+// talk to itself and the game server - so even if an attacker got markup
+// into the page they could not load outside code or send data anywhere else.
+function cspPlugin(): Plugin {
+  return {
+    name: 'inject-csp',
+    apply: 'build',
+    transformIndexHtml(html) {
+      const server = process.env.VITE_SERVER_URL ?? loadEnv('production', process.cwd(), 'VITE_').VITE_SERVER_URL ?? ''
+      let connect = "'self'"
+      try {
+        if (server) {
+          const u = new URL(server)
+          const ws = u.protocol === 'https:' ? 'wss:' : 'ws:'
+          connect += ` ${u.origin} ${ws}//${u.host}`
+        }
+      } catch {
+        // No valid server URL: online play is simply blocked by the policy.
+      }
+      const policy = [
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "font-src 'self'",
+        `connect-src ${connect}`,
+        "worker-src 'self'",
+        "manifest-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'none'",
+      ].join('; ')
+      return html.replace(
+        '<meta charset="UTF-8" />',
+        `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />\n    <meta name="referrer" content="no-referrer" />`
+      )
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   define: {
@@ -42,6 +83,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    cspPlugin(),
     VitePWA({
       // The app decides when to apply an update (see UpdateToast): it reloads
       // itself on the home screen and offers a Reload button mid-game.

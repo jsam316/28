@@ -22,7 +22,7 @@ export interface RoomState {
 // next successful join. error: the room refused us.
 export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'error';
 
-export function useOnlineGame(name: string, roomCode: string) {
+export function useOnlineGame(name: string, roomCode: string, create = false) {
   const socketRef = useRef(getSocket());
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +40,9 @@ export function useOnlineGame(name: string, roomCode: string) {
     const playerId = getPlayerId();
 
     function onConnect() {
-      socket.emit('room:join', { roomCode, name, playerId });
+      // Only the host's first join may create the room; every rejoin (and
+      // every guest) joins an existing one.
+      socket.emit('room:join', { roomCode, name, playerId, create: create && !hadSeat.current });
     }
     function onJoined({ seat: s, protocol, commit }: { roomCode: string; seat: Seat; protocol?: number; commit?: string }) {
       hadSeat.current = true;
@@ -105,7 +107,7 @@ export function useOnlineGame(name: string, roomCode: string) {
       socket.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomCode, name]);
+  }, [roomCode, name, create]);
 
   const startGame = useCallback((baseCards: number) => {
     socketRef.current.emit('room:start', { baseCards });
