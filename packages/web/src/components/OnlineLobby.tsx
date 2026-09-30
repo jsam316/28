@@ -3,15 +3,21 @@ import { prewarmServer } from '../net/socket';
 
 interface OnlineLobbyProps {
   name: string;
-  onJoined: (roomCode: string) => void;
+  // create: true when hosting a new table; joining never creates a room.
+  onJoined: (roomCode: string, create: boolean) => void;
   onExit: () => void;
 }
 
+// Unambiguous alphabet (no 0/O, 1/I). Codes come from the crypto generator so
+// they cannot be predicted from earlier ones.
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const CODE_LENGTH = 6;
+
 function randomRoomCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
-  return code;
+  const bytes = new Uint8Array(CODE_LENGTH);
+  crypto.getRandomValues(bytes);
+  // 256 is a multiple of the 32-letter alphabet, so this is unbiased.
+  return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('');
 }
 
 export function OnlineLobby({ name, onJoined, onExit }: OnlineLobbyProps) {
@@ -31,7 +37,7 @@ export function OnlineLobby({ name, onJoined, onExit }: OnlineLobbyProps) {
       <div className="home-section">
         <h2>Host a new table</h2>
         <p>Creates a room and invites 3 others to join with a code.</p>
-        <button type="button" className="btn btn-primary" onClick={() => onJoined(randomRoomCode())}>
+        <button type="button" className="btn btn-primary" onClick={() => onJoined(randomRoomCode(), true)}>
           Create room
         </button>
       </div>
@@ -43,7 +49,7 @@ export function OnlineLobby({ name, onJoined, onExit }: OnlineLobbyProps) {
           <input
             type="text"
             value={joinCode}
-            maxLength={6}
+            maxLength={8}
             placeholder="ABCDE"
             autoCapitalize="characters"
             autoCorrect="off"
@@ -55,7 +61,7 @@ export function OnlineLobby({ name, onJoined, onExit }: OnlineLobbyProps) {
           type="button"
           className="btn btn-secondary"
           disabled={joinCode.trim().length === 0}
-          onClick={() => onJoined(joinCode.trim())}
+          onClick={() => onJoined(joinCode.trim(), false)}
         >
           Join room
         </button>

@@ -7,8 +7,8 @@ export interface RoomPlayer {
   connected: boolean;
   ready: boolean;
   socketId: string | null;
-  // Stable per-browser id sent by the client so a dropped player can reclaim
-  // this seat when they reconnect. Bots have none.
+  // Secret per-browser id: the only way to reclaim this seat after a drop.
+  // Never sent to other players.
   playerId: string | null;
   // Pending hand-over of this seat to a bot after a disconnect.
   takeoverTimer: ReturnType<typeof setTimeout> | null;
@@ -20,30 +20,63 @@ export interface Room {
   state: GameState | null;
   createdAt: number;
   lastActivity: number;
+  // Last time any human was connected: rooms left to bots are cleaned up.
+  lastHumanSeen: number;
   botTimer: ReturnType<typeof setTimeout> | null;
 }
 
-const rooms = new Map<string, Room>();
+export class RoomStore {
+  private rooms = new Map<string, Room>();
 
-export function createRoom(code: string): Room {
-  const room: Room = {
-    code,
-    slots: [null, null, null, null],
-    state: null,
-    createdAt: Date.now(),
-    lastActivity: Date.now(),
-    botTimer: null,
-  };
-  rooms.set(code, room);
-  return room;
-}
+  get size(): number {
+    return this.rooms.size;
+  }
 
-export function getRoom(code: string): Room | undefined {
-  return rooms.get(code);
-}
+  get(code: string): Room | undefined {
+    return this.rooms.get(code);
+  }
 
-export function getOrCreateRoom(code: string): Room {
-  return rooms.get(code) ?? createRoom(code);
+  create(code: string): Room {
+    const now = Date.now();
+    const room: Room = {
+      code,
+      slots: [null, null, null, null],
+      state: null,
+      createdAt: now,
+      lastActivity: now,
+      lastHumanSeen: now,
+      botTimer: null,
+    };
+    this.rooms.set(code, room);
+    return room;
+  }
+
+  delete(room: Room): void {
+    if (room.botTimer) clearTimeout(room.botTimer);
+    for (const slot of room.slots) {
+      if (slot?.takeoverTimer) clearTimeout(slot.takeoverTimer);
+    }
+    this.rooms.delete(room.code);
+  }
+
+  // Drop rooms nobody is using: no connected human for `idleMs`, or no
+  // activity at all for `staleMs`.
+  cleanup(idleMs: number, staleMs: number): number {
+    const now = Date.now();
+    let removed = 0;
+    for (const room of this.rooms.values()) {
+      if (hasConnectedHuman(room)) room.lastHumanSeen = now;
+      if (now - room.lastHumanSeen > idleMs || now - room.lastActivity > staleMs) {
+        this.delete(room);
+        removed++;
+      }
+    }
+    return removed;
+  }
+
+  all(): IterableIterator<Room> {
+    return this.rooms.values();
+  }
 }
 
 export function findOpenSeat(room: Room): Seat | null {
@@ -53,21 +86,11 @@ export function findOpenSeat(room: Room): Seat | null {
   return null;
 }
 
-export function touch(room: Room) {
-  room.lastActivity = Date.now();
+export function hasConnectedHuman(room: Room): boolean {
+  return room.slots.some((s) => !!s && !s.isBot && s.connected);
 }
 
-const STALE_MS = 3 * 60 * 60 * 1000;
-
-export function cleanupStaleRooms() {
-  const now = Date.now();
-  for (const [code, room] of rooms) {
-    if (now - room.lastActivity > STALE_MS) {
-      if (room.botTimer) clearTimeout(room.botTimer);
-      for (const slot of room.slots) {
-        if (slot?.takeoverTimer) clearTimeout(slot.takeoverTimer);
-      }
-      rooms.delete(code);
-    }
-  }
+export function touch(room: Room) {
+  room.lastActivity = Date.now();
+  if (hasConnectedHuman(room)) room.lastHumanSeen = room.lastActivity;
 }

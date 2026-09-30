@@ -5,6 +5,7 @@ import { GameScreen } from './GameScreen';
 interface OnlineGameProps {
   name: string;
   roomCode: string;
+  create: boolean;
   onExit: () => void;
 }
 
@@ -25,9 +26,9 @@ function useWakingHint(active: boolean): boolean {
   return show;
 }
 
-export function OnlineGame({ name, roomCode, onExit }: OnlineGameProps) {
+export function OnlineGame({ name, roomCode, create, onExit }: OnlineGameProps) {
   const { status, error, notice, serverMismatch, seat, room, view, startGame, setReady, bid, redeal, pickTrump, callTrump, play, nextRound } =
-    useOnlineGame(name, roomCode);
+    useOnlineGame(name, roomCode, create);
   const [baseCards, setBaseCards] = useState(6);
   const wakingHint = useWakingHint(status === 'connecting' || status === 'reconnecting');
 

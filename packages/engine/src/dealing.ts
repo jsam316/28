@@ -1,4 +1,4 @@
-import { buildDeck, shuffle } from './deck.js';
+import { buildDeck, secureRandom, shuffle } from './deck.js';
 import { playerName } from './state.js';
 import {
   type BiddingState,
@@ -95,7 +95,7 @@ export function createGame(players: Player[], options: GameOptions = {}): GameSt
     baseCardsPerTeam: options.baseCardsPerTeam ?? DEFAULTS.baseCardsPerTeam,
     minBid: options.minBid ?? DEFAULTS.minBid,
     maxBid: options.maxBid ?? DEFAULTS.maxBid,
-    rng: options.rng ?? Math.random,
+    rng: options.rng ?? secureRandom,
   };
   return dealRound(
     players,
@@ -114,11 +114,14 @@ function carriedOptions(state: GameState, options: GameOptions): Required<GameOp
     baseCardsPerTeam: state.totalBaseCards / 2,
     minBid: state.bidding.minBid,
     maxBid: state.bidding.maxBid,
-    rng: options.rng ?? Math.random,
+    rng: options.rng ?? secureRandom,
   };
 }
 
 export function startNextRound(state: GameState, options: GameOptions = {}): GameState {
+  // Only a settled round moves on - otherwise any player could throw in a bad
+  // hand mid-round (or keep a finished match going) just by asking.
+  if (state.phase !== 'round_end') throw new Error('The round is not over yet');
   return dealRound(
     state.players,
     nextSeat(state.dealerSeat),

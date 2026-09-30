@@ -29,7 +29,7 @@ export const TOTAL_POINTS = 28;
 // incompatibly. The server reports its value on join; a client whose value
 // differs warns that the server is out of date rather than playing a game
 // that will not follow the rules it shows.
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 export function cardId(card: Card): string {
   return `${card.rank}${card.suit}`;

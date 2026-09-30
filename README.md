@@ -30,6 +30,35 @@ A web app for **28 (Twenty-Eight)**, the card game played across Kerala.
   for 20 seconds (and can reclaim it any time after, as long as the room lives) before a bot fills
   in; the lobby pre-warms the free-tier server and says so if it is still waking up.
 
+## Security
+
+The server treats every client as potentially hostile, including scripted or AI-driven ones:
+
+- **Hidden information stays hidden.** Each player only ever receives their own hand; the
+  set-aside trump is sent only to its owner until exposed; logs never name private cards; and
+  cards are dealt with the Web Crypto generator, not `Math.random` (whose state can be
+  reconstructed from enough observed deals).
+- **The server is the referee.** Every action is re-checked by the engine for turn, phase and
+  legality; payloads are validated and normalised before use, so junk values and client-supplied
+  objects never reach the game state or other players.
+- **Seats belong to their owner.** A dropped seat can only be reclaimed with that browser's
+  secret player id (never shown to anyone); names prove nothing. A reclaim drops the stale
+  connection so one seat is never driven twice.
+- **Abuse limits.** 8 KB message cap; a token-bucket rate limit per connection (a flood
+  disconnects it); a cap on connections and on new rooms per address; joining an unknown code
+  never creates a room; idle sockets and abandoned rooms are cleaned up, and bots stop playing
+  when no human is connected.
+- **Hardened surfaces.** The site ships a strict Content Security Policy (scripts only from the
+  site, network only to itself and the game server); the server sends `nosniff`, `DENY` framing
+  and `no-referrer` headers and only allows the site's own origins by CORS
+  (`CLIENT_ORIGIN` overrides the default list).
+- **Supply chain.** CI runs with read-only permissions, installs without lifecycle scripts,
+  audits production dependencies, and runs `packages/server/test/security.test.ts`, which
+  replays each attack against a live server. Dependabot proposes weekly updates.
+
+Limits can be tuned with environment variables on the server (`MAX_CONNECTIONS_PER_IP`,
+`ROOMS_PER_IP`, `EVENTS_PER_SECOND`, `MAX_ROOMS`, ...; see `packages/server/src/app.ts`).
+
 ## Deploying the server
 
 The web app is built from `main` by GitHub Pages; the Socket.IO server is hosted on Render from
@@ -37,7 +66,7 @@ The web app is built from `main` by GitHub Pages; the Socket.IO server is hosted
 does not understand (for example a trump chosen as a card rather than a suit) and the game then
 plays by the wrong rules. Every client checks the server's protocol version on joining a room and
 shows a red banner if they differ. To check what the server is running open `/health` on it
-(`{"ok":true,"protocol":3,"commit":"abc1234"}`); to update it, trigger **Manual Deploy → Deploy
+(`{"ok":true,"protocol":4,"commit":"abc1234"}`); to update it, trigger **Manual Deploy → Deploy
 latest commit** in the Render dashboard if auto-deploy is off.
 
 ## Project layout

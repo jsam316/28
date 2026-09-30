@@ -40,10 +40,26 @@ export interface SavedLocalGame {
   state: GameState;
 }
 
+const DIFFICULTIES: BotDifficulty[] = ['rookie', 'regular', 'expert'];
+
+// Saved games come from localStorage, which anything running on the page (or
+// a user poking at dev tools) can edit. Only resume a save that has the right
+// shape and that the engine can actually render; anything else is discarded
+// rather than crashing the app on load.
 export function loadSavedLocalGame(): SavedLocalGame | null {
   const saved = loadJSON<SavedLocalGame | null>(SAVE_KEY, null);
-  if (!saved || saved.version !== 1 || !saved.state || saved.state.phase === 'game_end') return null;
-  return saved;
+  if (!saved || typeof saved !== 'object' || saved.version !== 1 || !saved.state) return null;
+  if (saved.state.phase === 'game_end') return null;
+  if (typeof saved.humanName !== 'string' || !DIFFICULTIES.includes(saved.difficulty)) return null;
+  if (![3, 6, 9].includes(saved.baseCardsPerTeam)) return null;
+  try {
+    getPlayerView(saved.state, HUMAN_SEAT);
+    getCurrentActorSeat(saved.state);
+  } catch {
+    clearSavedLocalGame();
+    return null;
+  }
+  return { ...saved, humanName: saved.humanName.slice(0, 20) };
 }
 
 export function clearSavedLocalGame() {

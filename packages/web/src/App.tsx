@@ -11,7 +11,7 @@ type Screen =
   | { kind: 'home' }
   | { kind: 'local'; name: string; baseCardsPerTeam: number; difficulty: BotDifficulty; resumeFrom?: GameState }
   | { kind: 'online-lobby'; name: string }
-  | { kind: 'online-game'; name: string; roomCode: string };
+  | { kind: 'online-game'; name: string; roomCode: string; create: boolean };
 
 function LocalGame({
   name,
@@ -88,11 +88,13 @@ function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen)
     return (
       <OnlineLobby
         name={screen.name}
-        onJoined={(roomCode) => setScreen({ kind: 'online-game', name: screen.name, roomCode })}
+        onJoined={(roomCode, create) => setScreen({ kind: 'online-game', name: screen.name, roomCode, create })}
         onExit={() => setScreen({ kind: 'home' })}
       />
     );
   }
 
-  return <OnlineGame name={screen.name} roomCode={screen.roomCode} onExit={() => setScreen({ kind: 'home' })} />;
+  return (
+    <OnlineGame name={screen.name} roomCode={screen.roomCode} create={screen.create} onExit={() => setScreen({ kind: 'home' })} />
+  );
 }
