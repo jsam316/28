@@ -69,6 +69,12 @@ shows a red banner if they differ. To check what the server is running open `/he
 (`{"ok":true,"protocol":4,"commit":"abc1234"}`); to update it, trigger **Manual Deploy → Deploy
 latest commit** in the Render dashboard if auto-deploy is off.
 
+- **Look and feel** — a felt table on a rosewood rail with a gold inlay, ivory cards with gold
+  point dots under each index (J ●●●, 9 ●●, A and 10 ●), and a gold kasavu band as the accent.
+  It is all CSS plus one bundled font, so it works offline and needs no change to the security
+  policy. The display font is [Fraunces](https://github.com/undercasetype/Fraunces) under the SIL
+  Open Font License 1.1 (`packages/web/src/assets/fonts/OFL-Fraunces.txt`).
+
 ## Project layout
 
 This is an npm workspaces monorepo:

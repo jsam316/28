@@ -5,6 +5,7 @@ import { loadJSON, saveJSON } from '../utils/storage';
 import { type SavedLocalGame, clearSavedLocalGame, loadSavedLocalGame } from '../hooks/useLocalGame';
 import { RulesPanel } from './RulesPanel';
 import { SoundToggle } from './SoundToggle';
+import { PlayingCard } from './Card';
 
 interface HomeProps {
   onPlaySolo: (name: string, baseCardsPerTeam: number, difficulty: BotDifficulty) => void;
@@ -47,8 +48,17 @@ export function Home({ onPlaySolo, onResumeSolo, onGoOnline }: HomeProps) {
         </button>
         <SoundToggle />
       </div>
+      <div className="hero" aria-hidden="true">
+        <div className="hero-fan">
+          <PlayingCard card={{ rank: 'J', suit: 'S' }} size="md" />
+          <PlayingCard card={{ rank: '9', suit: 'H' }} size="md" />
+          <PlayingCard card={{ rank: 'A', suit: 'C' }} size="md" />
+          <PlayingCard card={{ rank: '10', suit: 'D' }} size="md" />
+        </div>
+      </div>
       <h1>28</h1>
       <p className="subtitle">The classic Kerala card game</p>
+      <div className="kasavu" aria-hidden="true" />
 
       <label className="field">
         Your name
@@ -83,6 +93,7 @@ export function Home({ onPlaySolo, onResumeSolo, onGoOnline }: HomeProps) {
         </div>
       )}
 
+      <div className="home-grid">
       <div className="home-section">
         <h2>Single player</h2>
         <label className="field">
@@ -112,7 +123,7 @@ export function Home({ onPlaySolo, onResumeSolo, onGoOnline }: HomeProps) {
 
       <div className="home-section">
         <h2>Online multiplayer</h2>
-        <p>Play with 3 friends in real time, each on their own device.</p>
+        <p className="section-note">Play with up to 3 friends in real time, each on their own device. Empty seats are filled by bots.</p>
         <button
           type="button"
           className="btn btn-secondary"
@@ -122,6 +133,7 @@ export function Home({ onPlaySolo, onResumeSolo, onGoOnline }: HomeProps) {
           Play Online
         </button>
         {!online && <p className="offline-note">You're offline — single player still works.</p>}
+      </div>
       </div>
 
       <p className="version-line">

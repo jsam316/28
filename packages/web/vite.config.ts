@@ -88,6 +88,10 @@ export default defineConfig({
       // The app decides when to apply an update (see UpdateToast): it reloads
       // itself on the home screen and offers a Reload button mid-game.
       registerType: 'prompt',
+      // Precache the self-hosted font too, so the offline game looks the same.
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,woff2}'],
+      },
       pwaAssets: {
         // Generates favicon/apple-touch-icon/maskable icons from this one
         // source image and injects the matching <link> tags automatically.

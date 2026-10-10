@@ -1,5 +1,6 @@
 import type { Player, RoundResult } from '@twenty-eight/engine';
 import { stakeLabel } from '../utils/stakes';
+import { BaseCardTally } from './BaseCardTally';
 
 interface GameEndOverlayProps {
   winner: 0 | 1;
@@ -20,8 +21,12 @@ export function GameEndOverlay({ winner, baseCards, totalBaseCards, lastResult, 
 
   return (
     <div className="overlay">
-      <div className="overlay-card">
+      <div className="overlay-card result-card match-card">
+        <div className="match-crest" aria-hidden="true">
+          28
+        </div>
         <h2>Team {winner === 0 ? 'A' : 'B'} wins the match!</h2>
+        <p className="match-winners">{teamName(winner)}</p>
         {lastResult && (
           <>
             <p>
@@ -36,7 +41,7 @@ export function GameEndOverlay({ winner, baseCards, totalBaseCards, lastResult, 
                 : `Bid failed — needed ${lastResult.bid}, captured only ${lastResult.pointsCaptured[lastResult.biddingTeam]}.`}
             </p>
             {stakeLabel(lastResult.bid) && (
-              <p className="result-failed">Stakes on the final round: {stakeLabel(lastResult.bid)}</p>
+              <p className="result-stakes">Stakes on the final round: {stakeLabel(lastResult.bid)}</p>
             )}
             {lastResult.kunukkuCleared.length > 0 && (
               <p className="result-made">
@@ -46,7 +51,8 @@ export function GameEndOverlay({ winner, baseCards, totalBaseCards, lastResult, 
             )}
           </>
         )}
-        <p>
+        <BaseCardTally baseCards={baseCards} totalBaseCards={totalBaseCards} />
+        <p className="result-transfer">
           Team {winner === 0 ? 'B' : 'A'} had no base cards left to give — Team {winner === 0 ? 'A' : 'B'} holds all{' '}
           {totalBaseCards} and breaks them! (Team A {baseCards[0]} — Team B {baseCards[1]})
         </p>
