@@ -1,5 +1,6 @@
 import type { Player, RoundResult } from '@twenty-eight/engine';
 import { stakeLabel } from '../utils/stakes';
+import { BaseCardTally } from './BaseCardTally';
 
 interface RoundEndOverlayProps {
   result: RoundResult;
@@ -16,23 +17,31 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
 
   const playerName = (seat: number) => players.find((p) => p.seat === seat)?.name ?? `Seat ${seat}`;
 
+  const total = result.baseCardsAfter[0] + result.baseCardsAfter[1];
   return (
     <div className="overlay">
-      <div className="overlay-card">
+      <div className="overlay-card result-card">
         <h2>Round {result.roundNumber} result</h2>
+        <div className={`result-banner ${result.made ? 'made' : 'failed'}`}>
+          <span className="result-icon" aria-hidden="true">
+            {result.made ? '✓' : '✕'}
+          </span>
+          {result.made ? (result.fullKai ? 'Full kai' : 'Bid made') : 'Bid failed'}
+        </div>
         <p>
           <strong>{teamName(result.biddingTeam)}</strong> bid {result.bid} and captured{' '}
           {result.pointsCaptured[result.biddingTeam]} points.
         </p>
-        <p className={result.made ? 'result-made' : 'result-failed'}>
-          {result.made
-            ? result.fullKai
-              ? 'FULL KAI! They swept all 8 kai!'
-              : 'Bid made!'
-            : `Bid failed — needed ${result.bid}, captured only ${result.pointsCaptured[result.biddingTeam]}.`}
-        </p>
-        {stakeLabel(result.bid) && <p className="result-failed">Stakes this round: {stakeLabel(result.bid)}</p>}
-        <p>
+        {(!result.made || result.fullKai) && (
+          <p className={result.made ? 'result-made' : 'result-failed'}>
+            {result.made
+              ? 'They swept all 8 kai!'
+              : `Needed ${result.bid}, captured only ${result.pointsCaptured[result.biddingTeam]}.`}
+          </p>
+        )}
+        {stakeLabel(result.bid) && <p className="result-stakes">Stakes this round: {stakeLabel(result.bid)}</p>}
+        <BaseCardTally baseCards={result.baseCardsAfter} totalBaseCards={total} />
+        <p className="result-transfer">
           {result.cardsTransferred > 0 ? (
             <>
               Team {result.roundWinnerTeam === 0 ? 'B' : 'A'} hands over {result.cardsTransferred} base card

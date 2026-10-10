@@ -25,8 +25,9 @@ export function PlayerSeat({
   trumpAside,
   position,
 }: PlayerSeatProps) {
+  const team = player.seat % 2;
   return (
-    <div className={`seat seat-${position} ${isTurn ? 'seat-active' : ''}`}>
+    <div className={`seat seat-${position} team-${team} ${isTurn ? 'seat-active' : ''}`}>
       {trumpAside && (
         <div className="seat-trump-aside" title="Trump card set aside">
           {trumpAside.card ? (
@@ -36,28 +37,41 @@ export function PlayerSeat({
           )}
         </div>
       )}
-      <div className="seat-badges">
-        {isDealer && <span className="badge badge-dealer">D</span>}
-        {isBidder && <span className="badge badge-bidder">Bid</span>}
-        {kunukku > 0 && (
-          <span
-            className={`badge badge-kunukku ${kunukku === 2 ? 'badge-kunukku-double' : ''}`}
-            title={
-              kunukku === 2
-                ? 'Kunukku (doubled) — must bid 20+ and make it to clear both partners'
-                : 'Kunukku — must win the bid and make it to clear'
-            }
-          >
-            Kunukku{kunukku === 2 ? ' ×2' : ''}
+      <div className="seat-avatar-wrap">
+        <div className="seat-avatar" aria-hidden="true">
+          {player.name.slice(0, 1).toUpperCase()}
+        </div>
+        {isDealer && (
+          <span className="badge badge-dealer" title="Dealer">
+            D
           </span>
         )}
       </div>
-      <div className="seat-avatar">{player.name.slice(0, 1).toUpperCase()}</div>
-      <div className="seat-name">
-        {player.name}
-        {!player.connected && <span className="seat-disconnected"> (offline)</span>}
+      <div className="seat-plate">
+        <div className="seat-name">
+          {player.name}
+          {!player.connected && <span className="seat-disconnected"> (offline)</span>}
+        </div>
+        <div className="seat-meta">
+          <span className="seat-cardcount">
+            <span className="mini-back" aria-hidden="true" />
+            {cardCount} cards
+          </span>
+          {isBidder && <span className="badge badge-bidder">Bid</span>}
+          {kunukku > 0 && (
+            <span
+              className={`badge badge-kunukku ${kunukku === 2 ? 'badge-kunukku-double' : ''}`}
+              title={
+                kunukku === 2
+                  ? 'Kunukku (doubled) — must bid 20+ and make it to clear both partners'
+                  : 'Kunukku — must win the bid and make it to clear'
+              }
+            >
+              Kunukku{kunukku === 2 ? ' ×2' : ''}
+            </span>
+          )}
+        </div>
       </div>
-      <div className="seat-cardcount">{cardCount} cards</div>
       {isTurn && player.isBot && (
         <div className="thinking-indicator" aria-label={`${player.name} is thinking`}>
           <span />

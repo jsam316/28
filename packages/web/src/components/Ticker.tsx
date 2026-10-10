@@ -1,49 +1,18 @@
-import { useEffect, useState } from 'react';
-
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-
-  useEffect(() => {
-    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduced(query.matches);
-    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
-    query.addEventListener('change', handler);
-    return () => query.removeEventListener('change', handler);
-  }, []);
-
-  return reduced;
-}
-
 interface TickerProps {
   log: string[];
 }
 
+// The latest event, faded in each time a new line arrives. The full history
+// lives in the round log (the ≡ button), so this stays one calm line rather
+// than a scrolling marquee. Screen readers get the same line from the live
+// region in GameScreen, so this one is hidden from them.
 export function Ticker({ log }: TickerProps) {
-  const reducedMotion = usePrefersReducedMotion();
-  const recent = log.slice(-12);
-  if (recent.length === 0) return null;
-
-  if (reducedMotion) {
-    return (
-      <div className="ticker ticker-static">
-        <div className="ticker-line">{recent[recent.length - 1]}</div>
-      </div>
-    );
-  }
-
+  const latest = log[log.length - 1];
+  if (!latest) return null;
   return (
-    <div className="ticker">
-      <div className="ticker-track">
-        {recent.map((line, i) => (
-          <div className="ticker-line" key={`a-${i}`}>
-            {line}
-          </div>
-        ))}
-        {recent.map((line, i) => (
-          <div className="ticker-line" aria-hidden="true" key={`b-${i}`}>
-            {line}
-          </div>
-        ))}
+    <div className="ticker" aria-hidden="true">
+      <div className="ticker-line" key={log.length}>
+        {latest}
       </div>
     </div>
   );
