@@ -11,18 +11,34 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch supersedes the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      # Actions are pinned to full commit SHAs (with the release in a comment)
+      # so a moved or hijacked tag cannot change what runs. Dependabot keeps
+      # the pins up to date.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 22
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
           cache: npm
 
       - run: npm ci --ignore-scripts
+
+      # Every installed package must carry a valid registry signature (and
+      # provenance attestations, where published, must verify).
+      - name: Verify registry signatures
+        run: npm audit signatures
 
       # The engine is a dependency of both the server and the web app.
       - name: Build engine

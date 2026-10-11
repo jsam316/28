@@ -4,13 +4,30 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Wait before proposing a freshly published version: most malicious
+    # releases are caught and pulled within days. Security updates are not
+    # delayed.
+    cooldown:
+      default-days: 5
+      semver-major-days: 14
     groups:
       # Patch and minor updates arrive as one PR a week; majors stay separate.
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # Node's type definitions follow the Node version the server runs on
+      # (.node-version), not the newest Node release.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 5
+    groups:
+      # Keep the SHA-pinned actions moving together.
+      actions:
+        patterns: ['*']
