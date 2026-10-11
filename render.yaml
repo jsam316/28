@@ -4,7 +4,8 @@ services:
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: npm install && npm run build -w packages/engine && npm run build -w packages/server
+    # Exact lockfile install; .npmrc keeps dependency install scripts off.
+    buildCommand: npm ci && npm run build -w packages/engine && npm run build -w packages/server
     startCommand: npm run start -w packages/server
     healthCheckPath: /health
     envVars:

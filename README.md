@@ -52,9 +52,13 @@ The server treats every client as potentially hostile, including scripted or AI-
   site, network only to itself and the game server); the server sends `nosniff`, `DENY` framing
   and `no-referrer` headers and only allows the site's own origins by CORS
   (`CLIENT_ORIGIN` overrides the default list).
-- **Supply chain.** CI runs with read-only permissions, installs without lifecycle scripts,
+- **Supply chain.** Workflows grant each job only the permissions it needs, pin every action to
+  a full commit SHA and do not leave the checkout token behind. Installs follow the lockfile
+  exactly (`npm ci`) and run no lifecycle scripts (`.npmrc`). CI verifies registry signatures,
   audits production dependencies, and runs `packages/server/test/security.test.ts`, which
-  replays each attack against a live server. Dependabot proposes weekly updates.
+  replays each attack against a live server. Node is pinned to 22 (`.node-version`) for CI, the
+  Pages build and Render alike. Dependabot proposes weekly updates, but waits a few days after
+  a release (two weeks for a major) so a hijacked version is likely pulled before it reaches us.
 
 Limits can be tuned with environment variables on the server (`MAX_CONNECTIONS_PER_IP`,
 `ROOMS_PER_IP`, `EVENTS_PER_SECOND`, `MAX_ROOMS`, ...; see `packages/server/src/app.ts`).

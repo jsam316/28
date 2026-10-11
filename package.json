@@ -15,5 +15,8 @@
     "typecheck": "npm run typecheck -w packages/engine && npm run typecheck -w packages/server && tsc -b packages/web",
     "ci": "npm run build -w packages/engine && npm run typecheck && npm run lint -w packages/web && npm run test:engine && npm run test:server",
     "test:server": "npm test -w packages/server"
+  },
+  "engines": {
+    "node": ">=22 <23"
   }
 }
