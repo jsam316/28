@@ -196,6 +196,49 @@ describe('calling for the trump', () => {
   });
 });
 
+describe('after the kai has been trumped', () => {
+  // Trump (hearts) is exposed. Seat 0 leads a diamond, seat 1 trumps with
+  // the queen of hearts; seats 2 and 3 are void in diamonds too.
+  function trumped(hand2: string[], hand3: string[] = ['8S', '7S', 'KS']): GameState {
+    let s = baseState({
+      hands: [['AD', '10D', '7H'], ['QH', 'KC', 'QC'], hand2, hand3],
+      dealerSeat: 3,
+      revealed: true,
+    });
+    s = play(s, 0, 'AD');
+    s = play(s, 1, 'QH');
+    return s;
+  }
+
+  it('forbids a lower trump while the player can overtrump or discard', () => {
+    const s = trumped(['8H', 'AH', 'KS']);
+    assert.deepEqual(ids(getLegalCards(s, 2)), ['AH', 'KS']);
+    assert.throws(() => play(s, 2, '8H'), /Illegal card/);
+  });
+
+  it('allows a discard of another suit instead of overtrumping', () => {
+    const s = trumped(['8H', 'KS', 'QS']);
+    assert.deepEqual(ids(getLegalCards(s, 2)), ['KS', 'QS']);
+  });
+
+  it('allows a lower trump when the player holds nothing else', () => {
+    const s = trumped(['8H']);
+    assert.deepEqual(ids(getLegalCards(s, 2)), ['8H']);
+  });
+
+  it('compares against the highest trump so far', () => {
+    let s = trumped(['AH', 'KS', 'QS'], ['8H', 'JH', '7S']);
+    s = play(s, 2, 'AH');
+    // The ace is now the top trump: the 8 is barred, the jack is fine.
+    assert.deepEqual(ids(getLegalCards(s, 3)), ['JH', '7S']);
+  });
+
+  it('does not apply to a player who can follow suit', () => {
+    const s = trumped(['8H', '7D', 'KS']);
+    assert.deepEqual(ids(getLegalCards(s, 2)), ['7D']);
+  });
+});
+
 describe('trick resolution during play', () => {
   it('does not let a trump-suit card played before the reveal win', () => {
     let s = baseState({

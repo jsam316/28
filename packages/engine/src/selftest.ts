@@ -7,6 +7,7 @@ import {
   bidTierStake,
   cardPoints,
   cardStrength,
+  countsAsTrump,
   chooseTrump,
   createGame,
   decideBotAction,
@@ -118,6 +119,18 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
         s.hands[seat].some((c) => c.suit !== t.suit)
       ) {
         throw new Error('Bidder led the concealed trump suit while holding another suit');
+      }
+      // Once a kai is trumped, a void player may not play a lower trump while
+      // holding a higher trump or another suit.
+      if (t.revealed && s.trick.cards.length > 0 && action.card.suit === t.suit) {
+        const led = s.trick.cards[0].card.suit;
+        const trumpsIn = s.trick.cards.filter((pc) => countsAsTrump(pc, led, t.suit));
+        const top = Math.max(-1, ...trumpsIn.map((pc) => cardStrength(pc.card)));
+        const void_ = !s.hands[seat].some((c) => c.suit === led);
+        const hadBetter = s.hands[seat].some((c) => c.suit !== t.suit || cardStrength(c) > top);
+        if (trumpsIn.length > 0 && void_ && cardStrength(action.card) < top && hadBetter) {
+          throw new Error('Played a lower trump on a trumped kai while able to overtrump or discard');
+        }
       }
       // Having called for the trump, the caller must trump if able.
       if (pendingMustTrump === seat) {

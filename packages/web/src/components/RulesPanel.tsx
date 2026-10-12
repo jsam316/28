@@ -85,7 +85,9 @@ export function RulesPanel({ onClose }: RulesPanelProps) {
             <p>
               A player who cannot follow suit may <strong>call for the trump</strong>. The declarer shows the card, it
               returns to their hand, and from then on the trump suit beats everything. The caller must play a trump to
-              that kai if they hold one; after that, trumping is never compulsory. A trump-suit card discarded before
+              that kai if they hold one; after that, trumping is never compulsory. Once a kai has been trumped, a player
+              who cannot follow suit must either <strong>overtrump</strong> or discard another suit; a lower trump is
+              not allowed unless it is all they hold. A trump-suit card discarded before
               the call was just a discard and never counts as a trump, but when the trump suit itself was led the
               highest trump in the kai wins it. If nobody calls, the declarer's last card is the trump itself and it is
               exposed as it is played.

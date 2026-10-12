@@ -28,8 +28,15 @@ function voidHint(view: PlayerView): { text: string; cutSuit: Card['suit'] | nul
       return { text: `You called for the trump, so you must play a ${suitName(trump.suit)} card.`, cutSuit: trump.suit };
     }
     const holdsTrump = view.legalCards.some((c) => c.suit === trump.suit);
+    // Lower trumps are barred once the kai has been trumped.
+    const barredTrump = view.hand.some((c) => c.suit === trump.suit) && view.legalCards.some((c) => c.suit !== trump.suit) &&
+      view.hand.filter((c) => c.suit === trump.suit).length > view.legalCards.filter((c) => c.suit === trump.suit).length;
     return {
-      text: holdsTrump
+      text: barredTrump
+        ? holdsTrump
+          ? `You can't follow ${suitName(led)}. The kai has been trumped: overtrump with a higher ${suitSymbol(trump.suit)} or discard another suit — a lower trump is not allowed.`
+          : `You can't follow ${suitName(led)}. The kai has been trumped higher than any trump you hold, and a lower trump is not allowed, so discard another suit.`
+        : holdsTrump
         ? `You can't follow ${suitName(led)}. Trump with ${suitSymbol(trump.suit)} to take the kai, or discard.`
         : led === trump.suit
           ? `Trumps (${suitName(led)}) were led and you hold none, so whatever you play is a discard.`

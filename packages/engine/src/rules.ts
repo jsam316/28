@@ -43,14 +43,35 @@ export function legalPlays(s: PlaySituation): Card[] {
   if (s.trick.length === 0) {
     return trumpLeadBarred(s) ? s.hand.filter((c) => c.suit !== s.trumpSuit) : s.hand.slice();
   }
-  const base = legalCardsFor(s.hand, s.trick[0].card.suit);
+  const ledSuit = s.trick[0].card.suit;
+  let options = legalCardsFor(s.hand, ledSuit);
   // Having called for the trump, the caller must play a trump to this kai if
   // they hold one.
   if (s.mustTrump && s.revealed && s.trumpSuit) {
-    const trumps = base.filter((c) => c.suit === s.trumpSuit);
-    if (trumps.length > 0) return trumps;
+    const trumps = options.filter((c) => c.suit === s.trumpSuit);
+    if (trumps.length > 0) options = trumps;
   }
-  return base;
+  // Once the kai has been trumped, a player who cannot follow suit must either
+  // overtrump or discard another suit - never play a lower trump (unless
+  // lower trumps are all they hold).
+  const topTrump = highestTrumpStrength(s);
+  if (topTrump !== null && !options.some((c) => c.suit === ledSuit)) {
+    const allowed = options.filter((c) => c.suit !== s.trumpSuit || cardStrength(c) > topTrump);
+    if (allowed.length > 0) options = allowed;
+  }
+  return options;
+}
+
+// The strength of the highest card counting as a trump in the kai so far, or
+// null if the trump is not exposed or nobody has trumped yet.
+function highestTrumpStrength(s: PlaySituation): number | null {
+  if (!s.revealed || s.trumpSuit === null || s.trick.length === 0) return null;
+  const ledSuit = s.trick[0].card.suit;
+  let top: number | null = null;
+  for (const pc of s.trick) {
+    if (countsAsTrump(pc, ledSuit, s.trumpSuit)) top = Math.max(top ?? -1, cardStrength(pc.card));
+  }
+  return top;
 }
 
 // Once the rest of the hand is dealt, the second round of bidding is reserved
