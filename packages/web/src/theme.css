@@ -584,8 +584,9 @@ html {
 }
 
 .card-suit {
-  font-size: 0.95em;
-  margin-top: 0.05em;
+  display: block;
+  font-size: 1.05em;
+  margin-top: 0.1em;
 }
 
 .card-points {
@@ -597,7 +598,8 @@ html {
 }
 
 .card-pip {
-  font-size: 1.85em;
+  display: flex;
+  font-size: 1.7em;
   line-height: 1;
 }
 
@@ -615,7 +617,12 @@ html {
 }
 
 /* On court cards the corner index sits on a small ivory tab over the
-   artwork's frame, the way printed decks do it. */
+   artwork's frame, the way printed decks do it, with a larger suit mark so
+   the suit reads even when the hand overlaps the cards. */
+.card-court .card-suit {
+  font-size: 1.2em;
+}
+
 .card-court .card-corner {
   z-index: 1;
   padding: 0.12em 0.1em 0.16em;

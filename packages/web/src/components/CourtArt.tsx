@@ -1,5 +1,6 @@
 import type { Card } from '@twenty-eight/engine';
-import { SUIT_SYMBOL, isRedSuit } from '../utils/cards';
+import { isRedSuit } from '../utils/cards';
+import { SuitPath } from './SuitIcon';
 
 // Court card artwork: a half-length figure, mirrored top and bottom like a
 // traditional deck, drawn as inline SVG so it scales crisply at every card
@@ -34,16 +35,19 @@ function Emblem({ suit, color, x, y }: { suit: Card['suit']; color: string; x: n
     <g>
       <circle cx={x} cy={y} r={5} fill={IVORY} stroke={GOLD} strokeWidth={1} />
       <circle cx={x} cy={y} r={4.1} fill="none" stroke={INK} strokeWidth={0.3} opacity={0.5} />
-      <text
-        x={x}
-        y={y + 2.45}
-        textAnchor="middle"
-        fontSize={7}
-        fill={color}
-        fontFamily="'Segoe UI Symbol', 'Apple Symbols', 'DejaVu Sans', sans-serif"
-      >
-        {SUIT_SYMBOL[suit]}
-      </text>
+      <SuitPath suit={suit} x={x} y={y} size={5.6} fill={color} />
+    </g>
+  );
+}
+
+// The large suit medallion where the two halves meet, so the suit reads at a
+// glance even on a small card, the way the pip does on the number cards.
+function CentreSuit({ suit, color }: { suit: Card['suit']; color: string }) {
+  return (
+    <g>
+      <circle cx={30} cy={46} r={9.6} fill={IVORY} stroke={GOLD} strokeWidth={1.4} />
+      <circle cx={30} cy={46} r={8.2} fill="none" stroke={INK} strokeWidth={0.35} opacity={0.45} />
+      <SuitPath suit={suit} x={30} y={46} size={11.6} fill={color} />
     </g>
   );
 }
@@ -205,7 +209,7 @@ export function CourtArt({ card }: { card: Card }) {
       </g>
       {/* divider between the two halves */}
       <path d="M2 46 L58 46" stroke={GOLD} strokeWidth={0.9} />
-      <path d="M30 44 L32 46 L30 48 L28 46 Z" fill={GOLD_LIGHT} stroke={INK} strokeWidth={0.3} />
+      <CentreSuit suit={card.suit} color={p.suit} />
       <rect x={1.8} y={1.8} width={56.4} height={88.4} rx={2.4} fill="none" stroke={p.suit} strokeWidth={0.5} opacity={0.55} />
     </svg>
   );
