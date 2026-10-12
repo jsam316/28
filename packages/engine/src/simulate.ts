@@ -5,7 +5,7 @@
 // all of that, plays each candidate card out to the end of the round with the
 // ordinary heuristics for everyone, and picks the card that wins the round
 // (and the most points) most often.
-import { resolveTrick } from './rules.js';
+import { legalPlays, resolveTrick } from './rules.js';
 import { buildMemory } from './tracking.js';
 import { DIFFICULTY_PROFILES, type DifficultyProfile, smartPlay, wantsTrumpReveal } from './policy.js';
 import {
@@ -58,19 +58,16 @@ function playableHand(sim: SimState, seat: Seat): Card[] {
   return sim.hands[seat];
 }
 
-function legalPlays(sim: SimState, seat: Seat): Card[] {
-  const hand = playableHand(sim, seat);
-  const led = sim.trick[0]?.card.suit ?? null;
-  let legal = hand;
-  if (led !== null) {
-    const followers = hand.filter((c) => c.suit === led);
-    if (followers.length > 0) legal = followers;
-  }
-  if (sim.mustTrumpSeat === seat && sim.revealed) {
-    const trumps = legal.filter((c) => c.suit === sim.trumpSuit);
-    if (trumps.length > 0) return trumps;
-  }
-  return legal;
+function legalFor(sim: SimState, seat: Seat): Card[] {
+  return legalPlays({
+    hand: playableHand(sim, seat),
+    trick: sim.trick,
+    completedTricks: sim.completed,
+    trumpSuit: sim.trumpSuit,
+    revealed: sim.revealed,
+    isTrumpChooser: sim.chosenBySeat === seat,
+    mustTrump: sim.mustTrumpSeat === seat,
+  });
 }
 
 function canCall(sim: SimState, seat: Seat): boolean {
@@ -86,7 +83,7 @@ function viewFor(sim: SimState, seat: Seat, base: PlayerView): PlayerView {
     ...base,
     you: seat,
     hand: sim.hands[seat],
-    legalCards: legalPlays(sim, seat),
+    legalCards: legalFor(sim, seat),
     trick: { leadSeat: sim.leadSeat, cards: sim.trick, trickNumber: sim.trickNumber },
     completedTricks: sim.completed,
     trump: {

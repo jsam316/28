@@ -1,4 +1,4 @@
-import { countsAsTrump, legalCardsFor, resolveTrick } from './rules.js';
+import { type PlaySituation, countsAsTrump, legalPlays, resolveTrick, trumpLeadBarred } from './rules.js';
 import { finishRound } from './scoring.js';
 import { appendLog, expectedPlaySeat, playerName } from './state.js';
 import { type Card, type GameState, type Seat, TOTAL_POINTS, cardId, teamOf } from './types.js';
@@ -39,17 +39,21 @@ export function playableHand(state: GameState, seat: Seat): Card[] {
   return state.hands[seat];
 }
 
-// The cards a seat may legally play to the current trick: follow suit if
-// possible (the concealed set-aside trump neither plays nor forces a follow),
-// and a player who just called for the trump must trump if able.
+// The cards a seat may legally play to the current kai (see legalPlays).
 function legalPlaysFor(state: GameState, seat: Seat): Card[] {
-  const ledSuit = state.trick.cards[0]?.card.suit ?? null;
-  const base = legalCardsFor(playableHand(state, seat), ledSuit);
-  if (state.mustTrumpSeat === seat && state.trump.revealed && state.trump.suit) {
-    const trumps = base.filter((c) => c.suit === state.trump.suit);
-    if (trumps.length > 0) return trumps;
-  }
-  return base;
+  return legalPlays(situationFor(state, seat));
+}
+
+function situationFor(state: GameState, seat: Seat): PlaySituation {
+  return {
+    hand: playableHand(state, seat),
+    trick: state.trick.cards,
+    completedTricks: state.completedTricks,
+    trumpSuit: state.trump.suit,
+    revealed: state.trump.revealed,
+    isTrumpChooser: state.trump.chosenBySeat === seat,
+    mustTrump: state.mustTrumpSeat === seat,
+  };
 }
 
 export function playCard(state: GameState, seat: Seat, requested: Card): GameState {
@@ -65,10 +69,13 @@ export function playCard(state: GameState, seat: Seat, requested: Card): GameSta
 
   const legal = legalPlaysFor(state, seat);
   if (!legal.some((c) => cardId(c) === cardId(card))) {
+    const situation = situationFor(state, seat);
     throw new Error(
       state.mustTrumpSeat === seat
         ? 'Having called for the trump, you must play a trump'
-        : 'Illegal card: must follow suit if possible'
+        : situation.trick.length === 0 && trumpLeadBarred(situation) && situation.hand.includes(card)
+          ? 'You cannot lead the trump suit until the trump is exposed'
+          : 'Illegal card: must follow suit if possible'
     );
   }
 

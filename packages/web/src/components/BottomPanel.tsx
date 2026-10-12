@@ -1,4 +1,4 @@
-import type { Card, PlayerView, Seat } from '@twenty-eight/engine';
+import { type Card, type PlayerView, type Seat, cardId } from '@twenty-eight/engine';
 import { BiddingPanel } from './BiddingPanel';
 import { TrumpPanel } from './TrumpPanel';
 import { Hand } from './Hand';
@@ -52,6 +52,20 @@ function voidHint(view: PlayerView): { text: string; cutSuit: Card['suit'] | nul
   };
 }
 
+// Why the declarer's trump-suit cards are greyed out when they lead: the
+// trump suit cannot be led while it is still concealed.
+function leadHint(view: PlayerView): string | null {
+  if (view.trick.cards.length > 0) return null;
+  const trump = view.trump;
+  if (trump.revealed || trump.chosenBySeat !== view.you || !trump.suit) return null;
+  const aside = trump.card ? cardId(trump.card) : '';
+  const legal = new Set(view.legalCards.map(cardId));
+  const barred = view.hand.some((c) => c.suit === trump.suit && cardId(c) !== aside && !legal.has(cardId(c)));
+  return barred
+    ? `You can't lead ${suitName(trump.suit)} while the trump is hidden — not until it is exposed or another player leads ${suitName(trump.suit)}.`
+    : null;
+}
+
 // Whatever the viewer can do right now: bid, set a trump aside, call for the
 // trump, or play a card - with their hand underneath.
 export function BottomPanel({ view, displayHand, currentTurnSeat, actions }: BottomPanelProps) {
@@ -99,11 +113,12 @@ export function BottomPanel({ view, displayHand, currentTurnSeat, actions }: Bot
   if (view.phase === 'playing') {
     const yourTurn = currentTurnSeat === you;
     const hint = yourTurn ? voidHint(view) : null;
+    const lead = yourTurn ? leadHint(view) : null;
     return (
       <>
-        {hint && (
+        {(hint || lead) && (
           <div className="void-hint" role="status">
-            {hint.text}
+            {hint?.text ?? lead}
           </div>
         )}
         {view.canRequestTrumpReveal && (

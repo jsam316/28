@@ -13,6 +13,46 @@ export function legalCardsFor(hand: Card[], ledSuit: Suit | null): Card[] {
   return followers.length > 0 ? followers : hand.slice();
 }
 
+// Everything the play rules need to know to list a seat's legal cards. Shared
+// by the referee (play.ts) and the expert bot's playouts (simulate.ts).
+export interface PlaySituation {
+  // The cards the seat may play from: for the trump chooser, the set-aside
+  // card is left out while it stays concealed (see playableHand).
+  hand: Card[];
+  trick: Pick<PlayedCard, 'card' | 'playedAfterReveal'>[];
+  completedTricks: Pick<CompletedTrick, 'cards'>[];
+  trumpSuit: Suit | null; // the real trump suit, exposed or not
+  revealed: boolean;
+  isTrumpChooser: boolean;
+  mustTrump: boolean; // this seat just called for the trump
+}
+
+// Until the trump is exposed the bidder may not lead the trump suit, unless
+// they hold nothing else or another player has already led it.
+export function trumpLeadBarred(s: PlaySituation): boolean {
+  return (
+    s.isTrumpChooser &&
+    !s.revealed &&
+    s.trumpSuit !== null &&
+    !s.completedTricks.some((t) => t.cards[0]?.card.suit === s.trumpSuit) &&
+    s.hand.some((c) => c.suit !== s.trumpSuit)
+  );
+}
+
+export function legalPlays(s: PlaySituation): Card[] {
+  if (s.trick.length === 0) {
+    return trumpLeadBarred(s) ? s.hand.filter((c) => c.suit !== s.trumpSuit) : s.hand.slice();
+  }
+  const base = legalCardsFor(s.hand, s.trick[0].card.suit);
+  // Having called for the trump, the caller must play a trump to this kai if
+  // they hold one.
+  if (s.mustTrump && s.revealed && s.trumpSuit) {
+    const trumps = base.filter((c) => c.suit === s.trumpSuit);
+    if (trumps.length > 0) return trumps;
+  }
+  return base;
+}
+
 // Once the rest of the hand is dealt, the second round of bidding is reserved
 // for confident full-hand bids of 24 and up.
 export const SECOND_ROUND_MIN_BID = 24;

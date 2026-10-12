@@ -80,6 +80,45 @@ describe('the concealed trump card', () => {
   });
 });
 
+describe('leading the trump suit before it is exposed', () => {
+  it('is barred for the bidder', () => {
+    const s = baseState();
+    assert.ok(!ids(getLegalCards(s, 0)).includes('8H'));
+    assert.throws(() => play(s, 0, '8H'), /cannot lead the trump suit/);
+  });
+
+  it('is allowed once another player has led the trump suit', () => {
+    // Seat 1 leads hearts; the bidder (seat 0) follows and wins with the 9.
+    let s = baseState({
+      hands: [['9H', 'KH', 'AD', '7H'], ['QH', '9D', 'KC', 'QC'], ['8H', '7D', 'KS', 'QS'], ['10S', 'QD', '8S', '7S']],
+      dealerSeat: 0,
+    });
+    s = play(s, 1, 'QH');
+    s = play(s, 2, '8H');
+    s = play(s, 3, '10S');
+    s = play(s, 0, '9H');
+    assert.equal(s.trick.leadSeat, 0);
+    assert.deepEqual(ids(getLegalCards(s, 0)), ['KH', 'AD']);
+  });
+
+  it('is allowed when the bidder holds nothing but trumps', () => {
+    const s = baseState({
+      hands: [['8H', 'KH', '7H'], ['QS', '9D', 'KC'], ['AS', '7D', 'KS'], ['JS', 'QD', '8S']],
+    });
+    assert.deepEqual(ids(getLegalCards(s, 0)), ['8H', 'KH']);
+  });
+
+  it('is allowed once the trump is exposed', () => {
+    const s = baseState({ revealed: true });
+    assert.ok(ids(getLegalCards(s, 0)).includes('8H'));
+  });
+
+  it('does not restrict the other players', () => {
+    const s = baseState({ bidderSeat: 2 });
+    assert.ok(ids(getLegalCards(s, 0)).includes('8H'));
+  });
+});
+
 describe('calling for the trump', () => {
   it('is only possible when void in the led suit and not leading', () => {
     let s = baseState();
@@ -262,7 +301,9 @@ describe('player views', () => {
 
   it('only lists legal cards for the seat whose turn it is', () => {
     const s = baseState();
-    assert.equal(getPlayerView(s, 0).legalCards.length, 7);
+    // Seat 0 holds 8 cards: the 7 of hearts is set aside and, as the bidder,
+    // they may not lead the 8 of hearts either while the trump is concealed.
+    assert.equal(getPlayerView(s, 0).legalCards.length, 6);
     assert.equal(getPlayerView(s, 1).legalCards.length, 0);
   });
 });

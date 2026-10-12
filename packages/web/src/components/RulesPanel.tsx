@@ -78,7 +78,9 @@ export function RulesPanel({ onClose }: RulesPanelProps) {
             <p>
               You must follow suit if you can. The set-aside trump card stays out of the declarer's hand and does not
               count for following suit. Until the trump is called, <strong>trumps have no power</strong>: the highest card
-              of the suit led wins the kai. The winner leads the next kai.
+              of the suit led wins the kai. The winner leads the next kai. While the trump is still concealed the
+              declarer may not lead the trump suit, unless they hold no other suit or another player has already led
+              it.
             </p>
             <p>
               A player who cannot follow suit may <strong>call for the trump</strong>. The declarer shows the card, it

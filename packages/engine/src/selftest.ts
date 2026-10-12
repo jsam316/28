@@ -107,6 +107,18 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
       ) {
         throw new Error('Bidder played the concealed trump card while other legal cards were available');
       }
+      // The bidder may not lead the concealed trump suit while holding another
+      // suit, unless someone else has already led it.
+      if (
+        s.trick.cards.length === 0 &&
+        t.chosenBySeat === seat &&
+        !t.revealed &&
+        action.card.suit === t.suit &&
+        !s.completedTricks.some((k) => k.cards[0].card.suit === t.suit) &&
+        s.hands[seat].some((c) => c.suit !== t.suit)
+      ) {
+        throw new Error('Bidder led the concealed trump suit while holding another suit');
+      }
       // Having called for the trump, the caller must trump if able.
       if (pendingMustTrump === seat) {
         const heldTrump = s.hands[seat].some((c) => c.suit === s.trump.suit);
