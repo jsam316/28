@@ -73,6 +73,18 @@ function leadHint(view: PlayerView): string | null {
     : null;
 }
 
+// Why this hand was just dealt again (a void round, four Jacks, or a
+// pointless hand thrown in), shown until the first bid of the new deal. The
+// ticker only has room for the latest line, which by then is the new deal.
+function redealNotice(view: PlayerView): string | null {
+  if (view.bidding.history.length > 0 || view.secondBatchDealt) return null;
+  const header = `Round ${view.roundNumber}: cards dealt.`;
+  let i = view.log.length - 1;
+  while (i >= 0 && !view.log[i].startsWith(header)) i--;
+  const reason = i > 0 ? view.log[i - 1] : '';
+  return /round is void|redealt|demands a redeal/.test(reason) ? reason : null;
+}
+
 // Whatever the viewer can do right now: bid, set a trump aside, call for the
 // trump, or play a card - with their hand underneath.
 export function BottomPanel({ view, displayHand, currentTurnSeat, actions }: BottomPanelProps) {
@@ -87,8 +99,14 @@ export function BottomPanel({ view, displayHand, currentTurnSeat, actions }: Bot
   );
 
   if (view.phase === 'bidding') {
+    const notice = redealNotice(view);
     return (
       <>
+        {notice && (
+          <div className="void-hint" role="status">
+            {notice}
+          </div>
+        )}
         <BiddingPanel
           bidding={view.bidding}
           you={you}

@@ -89,8 +89,8 @@ export function RulesPanel({ onClose }: RulesPanelProps) {
               who cannot follow suit must either <strong>overtrump</strong> or discard another suit; a lower trump is
               not allowed unless it is all they hold. A trump-suit card discarded before
               the call was just a discard and never counts as a trump, but when the trump suit itself was led the
-              highest trump in the kai wins it. If nobody calls, the declarer's last card is the trump itself and it is
-              exposed as it is played.
+              highest trump in the kai wins it. If nobody has called for the trump by the end of the seventh kai, the
+              round is <strong>void</strong>: nothing is scored and the same dealer deals again.
             </p>
           </section>
 

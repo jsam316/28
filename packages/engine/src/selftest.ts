@@ -31,7 +31,21 @@ function makePlayers(): Player[] {
   }));
 }
 
+// A deal can end in a void round (nobody called for the trump in the first
+// seven kai), which goes straight back to bidding: keep dealing until a round
+// is actually settled.
 function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
+  let s = playOneDeal(state, difficulty);
+  let deals = 1;
+  while (s.phase === 'bidding') {
+    if (++deals > 50) throw new Error('Round kept being voided');
+    voidRounds++;
+    s = playOneDeal(s, difficulty);
+  }
+  return s;
+}
+
+function playOneDeal(state: GameState, difficulty: BotDifficulty): GameState {
   let s = state;
   let guard = 0;
   // Bidding now spans two rounds with trump placement (and possibly a re-place)
@@ -175,6 +189,7 @@ const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0, zeroSt
 const revealStats = { calls: 0, forcedTrumps: 0 };
 let redealCount = 0;
 let fourJacksRedeals = 0;
+let voidRounds = 0;
 
 function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
   // A round can end early the moment the bid is mathematically lost, so it may
@@ -335,7 +350,9 @@ console.log(
     `${kunukkuStats.doubled} second clips, ${kunukkuStats.blockedWins} blocked-win events, ` +
     `${kunukkuStats.zeroStrips} rounds ending with a team stripped to zero.`
 );
-console.log(`Pointless-hand redeals demanded by the opener: ${redealCount}. Four-Jacks redeals: ${fourJacksRedeals}.`);
+console.log(
+  `Pointless-hand redeals demanded by the opener: ${redealCount}. Four-Jacks redeals: ${fourJacksRedeals}. Void rounds (no trump call in seven kai): ${voidRounds}.`
+);
 console.log(
   `Trump calls: ${revealStats.calls}, of which the caller held (and was forced to play) a trump: ${revealStats.forcedTrumps}.`
 );

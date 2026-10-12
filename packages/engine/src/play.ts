@@ -1,4 +1,5 @@
-import { type PlaySituation, countsAsTrump, legalPlays, resolveTrick, trumpLeadBarred } from './rules.js';
+import { type PlaySituation, VOID_AFTER_KAI, countsAsTrump, legalPlays, resolveTrick, trumpLeadBarred } from './rules.js';
+import { redealRound } from './dealing.js';
 import { finishRound } from './scoring.js';
 import { appendLog, expectedPlaySeat, playerName } from './state.js';
 import { type Card, type GameState, type Seat, TOTAL_POINTS, cardId, teamOf } from './types.js';
@@ -147,6 +148,15 @@ export function playCard(state: GameState, seat: Seat, requested: Card): GameSta
       `Defenders have ${defenderPoints} pts — the bid of ${bid} can no longer be made. The round ends early.`
     );
     return finishRound({ ...state, hands, trick, trump, mustTrumpSeat, completedTricks, log: appendLog(state, ...log) });
+  }
+
+  // If nobody has called for the trump by the end of the seventh kai, the
+  // round stands invalid: nothing is scored and the same dealer deals again.
+  if (completedTricks.length === VOID_AFTER_KAI && !trump.revealed) {
+    return redealRound(
+      { ...state, log: appendLog(state, ...log) },
+      `Nobody called for the trump in the first ${VOID_AFTER_KAI} kai — the round is void and dealt again.`
+    );
   }
 
   const newTrick = { leadSeat: completed.winnerSeat, cards: [], trickNumber: trick.trickNumber + 1 };

@@ -5,7 +5,7 @@
 // all of that, plays each candidate card out to the end of the round with the
 // ordinary heuristics for everyone, and picks the card that wins the round
 // (and the most points) most often.
-import { legalPlays, resolveTrick } from './rules.js';
+import { VOID_AFTER_KAI, legalPlays, resolveTrick } from './rules.js';
 import { buildMemory } from './tracking.js';
 import { DIFFICULTY_PROFILES, type DifficultyProfile, smartPlay, wantsTrumpReveal } from './policy.js';
 import {
@@ -44,6 +44,7 @@ interface SimState {
   bid: number;
   points: [number, number];
   finished: boolean;
+  voided: boolean; // nobody called for the trump in the first seven kai
 }
 
 // Playouts use the plain "regular" policy for everyone, with no mistakes and
@@ -119,6 +120,7 @@ function applyPlay(sim: SimState, seat: Seat, card: Card) {
   sim.trickNumber++;
   const defenders = sim.bidderTeam === 0 ? 1 : 0;
   if (sim.completed.length === 8 || sim.points[defenders] > TOTAL_POINTS - sim.bid) sim.finished = true;
+  else if (sim.completed.length === VOID_AFTER_KAI && !sim.revealed) sim.finished = sim.voided = true;
 }
 
 function seatToPlay(sim: SimState): Seat {
@@ -143,6 +145,8 @@ function playOut(sim: SimState, base: PlayerView) {
 // How good the finished round is for the viewer's team: winning the round is
 // what moves base cards; points beyond that break ties.
 function scoreFor(sim: SimState, team: 0 | 1): number {
+  // A void round moves nothing: halfway between winning and losing.
+  if (sim.voided) return 50;
   const made = sim.points[sim.bidderTeam] >= sim.bid;
   const won = made ? sim.bidderTeam === team : sim.bidderTeam !== team;
   return (won ? 100 : 0) + sim.points[team];
@@ -225,6 +229,7 @@ function simFrom(view: PlayerView, dealt: Card[][]): SimState {
       [0, 0]
     ),
     finished: false,
+    voided: false,
   };
 }
 

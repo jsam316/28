@@ -78,6 +78,9 @@ function highestTrumpStrength(s: PlaySituation): number | null {
 // for confident full-hand bids of 24 and up.
 export const SECOND_ROUND_MIN_BID = 24;
 
+// A round in which the trump is still concealed after this many kai is void.
+export const VOID_AFTER_KAI = 7;
+
 // "If you wish to bid over your partner's bid, your left hand opponent having
 // passed, you must bid at least 20."
 export const PARTNER_OVERCALL_MIN_BID = 20;

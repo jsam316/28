@@ -318,7 +318,8 @@ describe('early end', () => {
   });
 
   it('plays a made bid through all eight kai', () => {
-    let s = baseState({ bid: 14 });
+    // Exposed from the start, so the round cannot be voided for want of a call.
+    let s = baseState({ bid: 14, revealed: true });
     let guard = 0;
     while (s.phase === 'playing' && guard++ < 40) {
       const seat = s.trick.cards.length === 0 ? (s.trick.leadSeat as Seat) : (((s.trick.cards[3 - (4 - s.trick.cards.length)].seat + 1) % 4) as Seat);
@@ -328,6 +329,25 @@ describe('early end', () => {
     assert.ok(s.phase === 'round_end' || s.phase === 'game_end');
     assert.equal(s.completedTricks.length, 8);
     assert.equal(s.completedTricks.reduce((sum, t) => sum + t.points, 0), 28);
+  });
+});
+
+describe('a round with no call for the trump', () => {
+  it('is void after seven kai and dealt again by the same dealer', () => {
+    let s = baseState({ bid: 14 });
+    const before = { round: s.roundNumber, base: s.baseCards, history: s.history.length };
+    let guard = 0;
+    while (s.phase === 'playing' && guard++ < 40) {
+      const seat = s.trick.cards.length === 0 ? (s.trick.leadSeat as Seat) : (((s.trick.cards[s.trick.cards.length - 1].seat + 1) % 4) as Seat);
+      s = playCard(s, seat, getLegalCards(s, seat)[0]);
+    }
+    assert.equal(s.trump.revealed, false);
+    assert.equal(s.phase, 'bidding');
+    assert.equal(s.dealerSeat, 3);
+    assert.equal(s.roundNumber, before.round);
+    assert.deepEqual(s.baseCards, before.base);
+    assert.equal(s.history.length, before.history);
+    assert.ok(s.log.some((l) => /round is void/.test(l)));
   });
 });
 
