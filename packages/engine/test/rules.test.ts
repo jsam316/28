@@ -87,4 +87,11 @@ describe('resolveTrick', () => {
     const t = resolveTrick(played(['7S', 'JH', '9H', '8H'], [false, false, true, true]), 'H', 1);
     assert.equal(t.winnerSeat, 2);
   });
+  it('gives a trump-led kai to the highest trump, even one led before the call', () => {
+    // Hearts (still concealed) were led with the jack; seat 1, void, called
+    // for the trump and discarded; the 7 of hearts played after the call must
+    // not beat the led jack.
+    const t = resolveTrick(played(['JH', '8S', '7H', '9H'], [false, true, true, true]), 'H', 1);
+    assert.equal(t.winnerSeat, 0);
+  });
 });

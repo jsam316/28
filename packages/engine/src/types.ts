@@ -29,7 +29,7 @@ export const TOTAL_POINTS = 28;
 // incompatibly. The server reports its value on join; a client whose value
 // differs warns that the server is out of date rather than playing a game
 // that will not follow the rules it shows.
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 export function cardId(card: Card): string {
   return `${card.rank}${card.suit}`;
@@ -91,8 +91,9 @@ export interface PlayedCard {
   seat: Seat;
   card: Card;
   // Whether the trump had been exposed by the time this card hit the table.
-  // A trump-suit card played before the exposure does not count as a trump,
-  // even for a trick that ends after the exposure.
+  // A trump-suit card discarded before the exposure does not count as a trump,
+  // even for a trick that ends after the exposure (when the trump suit itself
+  // was led, every card that followed suit does - see countsAsTrump).
   playedAfterReveal?: boolean;
 }
 

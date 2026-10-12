@@ -6,6 +6,8 @@ import {
   TOTAL_POINTS,
   bidTierStake,
   cardPoints,
+  cardStrength,
+  countsAsTrump,
   chooseTrump,
   createGame,
   decideBotAction,
@@ -29,7 +31,21 @@ function makePlayers(): Player[] {
   }));
 }
 
+// A deal can end in a void round (nobody called for the trump in the first
+// seven kai), which goes straight back to bidding: keep dealing until a round
+// is actually settled.
 function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
+  let s = playOneDeal(state, difficulty);
+  let deals = 1;
+  while (s.phase === 'bidding') {
+    if (++deals > 50) throw new Error('Round kept being voided');
+    voidRounds++;
+    s = playOneDeal(s, difficulty);
+  }
+  return s;
+}
+
+function playOneDeal(state: GameState, difficulty: BotDifficulty): GameState {
   let s = state;
   let guard = 0;
   // Bidding now spans two rounds with trump placement (and possibly a re-place)
@@ -106,6 +122,30 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
       ) {
         throw new Error('Bidder played the concealed trump card while other legal cards were available');
       }
+      // The bidder may not lead the concealed trump suit while holding another
+      // suit, unless someone else has already led it.
+      if (
+        s.trick.cards.length === 0 &&
+        t.chosenBySeat === seat &&
+        !t.revealed &&
+        action.card.suit === t.suit &&
+        !s.completedTricks.some((k) => k.cards[0].card.suit === t.suit) &&
+        s.hands[seat].some((c) => c.suit !== t.suit)
+      ) {
+        throw new Error('Bidder led the concealed trump suit while holding another suit');
+      }
+      // Once a kai is trumped, a void player may not play a lower trump while
+      // holding a higher trump or another suit.
+      if (t.revealed && s.trick.cards.length > 0 && action.card.suit === t.suit) {
+        const led = s.trick.cards[0].card.suit;
+        const trumpsIn = s.trick.cards.filter((pc) => countsAsTrump(pc, led, t.suit));
+        const top = Math.max(-1, ...trumpsIn.map((pc) => cardStrength(pc.card)));
+        const void_ = !s.hands[seat].some((c) => c.suit === led);
+        const hadBetter = s.hands[seat].some((c) => c.suit !== t.suit || cardStrength(c) > top);
+        if (trumpsIn.length > 0 && void_ && cardStrength(action.card) < top && hadBetter) {
+          throw new Error('Played a lower trump on a trumped kai while able to overtrump or discard');
+        }
+      }
       // Having called for the trump, the caller must trump if able.
       if (pendingMustTrump === seat) {
         const heldTrump = s.hands[seat].some((c) => c.suit === s.trump.suit);
@@ -122,7 +162,8 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
   }
 
   // Per-card trump status: in every completed kai, an off-suit winner must be
-  // a trump-suit card that was played after the exposure.
+  // a trump-suit card that was played after the exposure, and a trump-led kai
+  // goes to the highest card of the suit led.
   for (const t of s.completedTricks) {
     const ledSuit = t.cards[0].card.suit;
     const winner = t.cards.find((pc) => pc.seat === t.winnerSeat)!;
@@ -131,6 +172,12 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
         throw new Error(
           `Kai ${t.trickNumber} won off-suit by ${winner.card.rank}${winner.card.suit} without a post-reveal trump`
         );
+      }
+    }
+    if (ledSuit === s.trump.suit) {
+      const top = t.cards.filter((pc) => pc.card.suit === ledSuit).sort((a, b) => cardStrength(b.card) - cardStrength(a.card))[0];
+      if (top.seat !== t.winnerSeat) {
+        throw new Error(`Trump-led kai ${t.trickNumber} not won by the highest trump ${top.card.rank}${top.card.suit}`);
       }
     }
   }
@@ -142,6 +189,7 @@ const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0, zeroSt
 const revealStats = { calls: 0, forcedTrumps: 0 };
 let redealCount = 0;
 let fourJacksRedeals = 0;
+let voidRounds = 0;
 
 function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
   // A round can end early the moment the bid is mathematically lost, so it may
@@ -302,7 +350,9 @@ console.log(
     `${kunukkuStats.doubled} second clips, ${kunukkuStats.blockedWins} blocked-win events, ` +
     `${kunukkuStats.zeroStrips} rounds ending with a team stripped to zero.`
 );
-console.log(`Pointless-hand redeals demanded by the opener: ${redealCount}. Four-Jacks redeals: ${fourJacksRedeals}.`);
+console.log(
+  `Pointless-hand redeals demanded by the opener: ${redealCount}. Four-Jacks redeals: ${fourJacksRedeals}. Void rounds (no trump call in seven kai): ${voidRounds}.`
+);
 console.log(
   `Trump calls: ${revealStats.calls}, of which the caller held (and was forced to play) a trump: ${revealStats.forcedTrumps}.`
 );

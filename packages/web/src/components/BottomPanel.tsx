@@ -1,4 +1,4 @@
-import type { Card, PlayerView, Seat } from '@twenty-eight/engine';
+import { type Card, type PlayerView, type Seat, cardId } from '@twenty-eight/engine';
 import { BiddingPanel } from './BiddingPanel';
 import { TrumpPanel } from './TrumpPanel';
 import { Hand } from './Hand';
@@ -28,8 +28,15 @@ function voidHint(view: PlayerView): { text: string; cutSuit: Card['suit'] | nul
       return { text: `You called for the trump, so you must play a ${suitName(trump.suit)} card.`, cutSuit: trump.suit };
     }
     const holdsTrump = view.legalCards.some((c) => c.suit === trump.suit);
+    // Lower trumps are barred once the kai has been trumped.
+    const barredTrump = view.hand.some((c) => c.suit === trump.suit) && view.legalCards.some((c) => c.suit !== trump.suit) &&
+      view.hand.filter((c) => c.suit === trump.suit).length > view.legalCards.filter((c) => c.suit === trump.suit).length;
     return {
-      text: holdsTrump
+      text: barredTrump
+        ? holdsTrump
+          ? `You can't follow ${suitName(led)}. The kai has been trumped: overtrump with a higher ${suitSymbol(trump.suit)} or discard another suit — a lower trump is not allowed.`
+          : `You can't follow ${suitName(led)}. The kai has been trumped higher than any trump you hold, and a lower trump is not allowed, so discard another suit.`
+        : holdsTrump
         ? `You can't follow ${suitName(led)}. Trump with ${suitSymbol(trump.suit)} to take the kai, or discard.`
         : led === trump.suit
           ? `Trumps (${suitName(led)}) were led and you hold none, so whatever you play is a discard.`
@@ -52,6 +59,32 @@ function voidHint(view: PlayerView): { text: string; cutSuit: Card['suit'] | nul
   };
 }
 
+// Why the declarer's trump-suit cards are greyed out when they lead: the
+// trump suit cannot be led while it is still concealed.
+function leadHint(view: PlayerView): string | null {
+  if (view.trick.cards.length > 0) return null;
+  const trump = view.trump;
+  if (trump.revealed || trump.chosenBySeat !== view.you || !trump.suit) return null;
+  const aside = trump.card ? cardId(trump.card) : '';
+  const legal = new Set(view.legalCards.map(cardId));
+  const barred = view.hand.some((c) => c.suit === trump.suit && cardId(c) !== aside && !legal.has(cardId(c)));
+  return barred
+    ? `You can't lead ${suitName(trump.suit)} while the trump is hidden — not until it is exposed or another player leads ${suitName(trump.suit)}.`
+    : null;
+}
+
+// Why this hand was just dealt again (a void round, four Jacks, or a
+// pointless hand thrown in), shown until the first bid of the new deal. The
+// ticker only has room for the latest line, which by then is the new deal.
+function redealNotice(view: PlayerView): string | null {
+  if (view.bidding.history.length > 0 || view.secondBatchDealt) return null;
+  const header = `Round ${view.roundNumber}: cards dealt.`;
+  let i = view.log.length - 1;
+  while (i >= 0 && !view.log[i].startsWith(header)) i--;
+  const reason = i > 0 ? view.log[i - 1] : '';
+  return /round is void|redealt|demands a redeal/.test(reason) ? reason : null;
+}
+
 // Whatever the viewer can do right now: bid, set a trump aside, call for the
 // trump, or play a card - with their hand underneath.
 export function BottomPanel({ view, displayHand, currentTurnSeat, actions }: BottomPanelProps) {
@@ -66,8 +99,14 @@ export function BottomPanel({ view, displayHand, currentTurnSeat, actions }: Bot
   );
 
   if (view.phase === 'bidding') {
+    const notice = redealNotice(view);
     return (
       <>
+        {notice && (
+          <div className="void-hint" role="status">
+            {notice}
+          </div>
+        )}
         <BiddingPanel
           bidding={view.bidding}
           you={you}
@@ -99,11 +138,12 @@ export function BottomPanel({ view, displayHand, currentTurnSeat, actions }: Bot
   if (view.phase === 'playing') {
     const yourTurn = currentTurnSeat === you;
     const hint = yourTurn ? voidHint(view) : null;
+    const lead = yourTurn ? leadHint(view) : null;
     return (
       <>
-        {hint && (
+        {(hint || lead) && (
           <div className="void-hint" role="status">
-            {hint.text}
+            {hint?.text ?? lead}
           </div>
         )}
         {view.canRequestTrumpReveal && (

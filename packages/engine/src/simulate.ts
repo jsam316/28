@@ -5,7 +5,7 @@
 // all of that, plays each candidate card out to the end of the round with the
 // ordinary heuristics for everyone, and picks the card that wins the round
 // (and the most points) most often.
-import { resolveTrick } from './rules.js';
+import { VOID_AFTER_KAI, legalPlays, resolveTrick } from './rules.js';
 import { buildMemory } from './tracking.js';
 import { DIFFICULTY_PROFILES, type DifficultyProfile, smartPlay, wantsTrumpReveal } from './policy.js';
 import {
@@ -44,6 +44,7 @@ interface SimState {
   bid: number;
   points: [number, number];
   finished: boolean;
+  voided: boolean; // nobody called for the trump in the first seven kai
 }
 
 // Playouts use the plain "regular" policy for everyone, with no mistakes and
@@ -58,19 +59,16 @@ function playableHand(sim: SimState, seat: Seat): Card[] {
   return sim.hands[seat];
 }
 
-function legalPlays(sim: SimState, seat: Seat): Card[] {
-  const hand = playableHand(sim, seat);
-  const led = sim.trick[0]?.card.suit ?? null;
-  let legal = hand;
-  if (led !== null) {
-    const followers = hand.filter((c) => c.suit === led);
-    if (followers.length > 0) legal = followers;
-  }
-  if (sim.mustTrumpSeat === seat && sim.revealed) {
-    const trumps = legal.filter((c) => c.suit === sim.trumpSuit);
-    if (trumps.length > 0) return trumps;
-  }
-  return legal;
+function legalFor(sim: SimState, seat: Seat): Card[] {
+  return legalPlays({
+    hand: playableHand(sim, seat),
+    trick: sim.trick,
+    completedTricks: sim.completed,
+    trumpSuit: sim.trumpSuit,
+    revealed: sim.revealed,
+    isTrumpChooser: sim.chosenBySeat === seat,
+    mustTrump: sim.mustTrumpSeat === seat,
+  });
 }
 
 function canCall(sim: SimState, seat: Seat): boolean {
@@ -86,7 +84,7 @@ function viewFor(sim: SimState, seat: Seat, base: PlayerView): PlayerView {
     ...base,
     you: seat,
     hand: sim.hands[seat],
-    legalCards: legalPlays(sim, seat),
+    legalCards: legalFor(sim, seat),
     trick: { leadSeat: sim.leadSeat, cards: sim.trick, trickNumber: sim.trickNumber },
     completedTricks: sim.completed,
     trump: {
@@ -122,6 +120,7 @@ function applyPlay(sim: SimState, seat: Seat, card: Card) {
   sim.trickNumber++;
   const defenders = sim.bidderTeam === 0 ? 1 : 0;
   if (sim.completed.length === 8 || sim.points[defenders] > TOTAL_POINTS - sim.bid) sim.finished = true;
+  else if (sim.completed.length === VOID_AFTER_KAI && !sim.revealed) sim.finished = sim.voided = true;
 }
 
 function seatToPlay(sim: SimState): Seat {
@@ -146,6 +145,8 @@ function playOut(sim: SimState, base: PlayerView) {
 // How good the finished round is for the viewer's team: winning the round is
 // what moves base cards; points beyond that break ties.
 function scoreFor(sim: SimState, team: 0 | 1): number {
+  // A void round moves nothing: halfway between winning and losing.
+  if (sim.voided) return 50;
   const made = sim.points[sim.bidderTeam] >= sim.bid;
   const won = made ? sim.bidderTeam === team : sim.bidderTeam !== team;
   return (won ? 100 : 0) + sim.points[team];
@@ -228,6 +229,7 @@ function simFrom(view: PlayerView, dealt: Card[][]): SimState {
       [0, 0]
     ),
     finished: false,
+    voided: false,
   };
 }
 

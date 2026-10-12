@@ -75,8 +75,47 @@ describe('the concealed trump card', () => {
     s = play(s, 0, '7H');
     assert.equal(s.trump.revealed, true);
     assert.ok(s.log.some((l) => /forced to expose/.test(l)));
-    // It was exposed as it was played, so it counts as a trump and wins the kai.
-    assert.equal(s.completedTricks[0].winnerSeat, 0);
+    // Hearts were led, so the kai goes to the highest trump in it: the jack.
+    assert.equal(s.completedTricks[0].winnerSeat, 3);
+  });
+});
+
+describe('leading the trump suit before it is exposed', () => {
+  it('is barred for the bidder', () => {
+    const s = baseState();
+    assert.ok(!ids(getLegalCards(s, 0)).includes('8H'));
+    assert.throws(() => play(s, 0, '8H'), /cannot lead the trump suit/);
+  });
+
+  it('is allowed once another player has led the trump suit', () => {
+    // Seat 1 leads hearts; the bidder (seat 0) follows and wins with the 9.
+    let s = baseState({
+      hands: [['9H', 'KH', 'AD', '7H'], ['QH', '9D', 'KC', 'QC'], ['8H', '7D', 'KS', 'QS'], ['10S', 'QD', '8S', '7S']],
+      dealerSeat: 0,
+    });
+    s = play(s, 1, 'QH');
+    s = play(s, 2, '8H');
+    s = play(s, 3, '10S');
+    s = play(s, 0, '9H');
+    assert.equal(s.trick.leadSeat, 0);
+    assert.deepEqual(ids(getLegalCards(s, 0)), ['KH', 'AD']);
+  });
+
+  it('is allowed when the bidder holds nothing but trumps', () => {
+    const s = baseState({
+      hands: [['8H', 'KH', '7H'], ['QS', '9D', 'KC'], ['AS', '7D', 'KS'], ['JS', 'QD', '8S']],
+    });
+    assert.deepEqual(ids(getLegalCards(s, 0)), ['8H', 'KH']);
+  });
+
+  it('is allowed once the trump is exposed', () => {
+    const s = baseState({ revealed: true });
+    assert.ok(ids(getLegalCards(s, 0)).includes('8H'));
+  });
+
+  it('does not restrict the other players', () => {
+    const s = baseState({ bidderSeat: 2 });
+    assert.ok(ids(getLegalCards(s, 0)).includes('8H'));
   });
 });
 
@@ -157,6 +196,49 @@ describe('calling for the trump', () => {
   });
 });
 
+describe('after the kai has been trumped', () => {
+  // Trump (hearts) is exposed. Seat 0 leads a diamond, seat 1 trumps with
+  // the queen of hearts; seats 2 and 3 are void in diamonds too.
+  function trumped(hand2: string[], hand3: string[] = ['8S', '7S', 'KS']): GameState {
+    let s = baseState({
+      hands: [['AD', '10D', '7H'], ['QH', 'KC', 'QC'], hand2, hand3],
+      dealerSeat: 3,
+      revealed: true,
+    });
+    s = play(s, 0, 'AD');
+    s = play(s, 1, 'QH');
+    return s;
+  }
+
+  it('forbids a lower trump while the player can overtrump or discard', () => {
+    const s = trumped(['8H', 'AH', 'KS']);
+    assert.deepEqual(ids(getLegalCards(s, 2)), ['AH', 'KS']);
+    assert.throws(() => play(s, 2, '8H'), /Illegal card/);
+  });
+
+  it('allows a discard of another suit instead of overtrumping', () => {
+    const s = trumped(['8H', 'KS', 'QS']);
+    assert.deepEqual(ids(getLegalCards(s, 2)), ['KS', 'QS']);
+  });
+
+  it('allows a lower trump when the player holds nothing else', () => {
+    const s = trumped(['8H']);
+    assert.deepEqual(ids(getLegalCards(s, 2)), ['8H']);
+  });
+
+  it('compares against the highest trump so far', () => {
+    let s = trumped(['AH', 'KS', 'QS'], ['8H', 'JH', '7S']);
+    s = play(s, 2, 'AH');
+    // The ace is now the top trump: the 8 is barred, the jack is fine.
+    assert.deepEqual(ids(getLegalCards(s, 3)), ['JH', '7S']);
+  });
+
+  it('does not apply to a player who can follow suit', () => {
+    const s = trumped(['8H', '7D', 'KS']);
+    assert.deepEqual(ids(getLegalCards(s, 2)), ['7D']);
+  });
+});
+
 describe('trick resolution during play', () => {
   it('does not let a trump-suit card played before the reveal win', () => {
     let s = baseState({
@@ -170,6 +252,25 @@ describe('trick resolution during play', () => {
     s = play(s, 3, 'QD');
     assert.equal(s.completedTricks[0].winnerSeat, 0, 'AD wins: hearts were not yet trumps');
     assert.equal(s.trump.revealed, false);
+  });
+
+  it('gives a trump-led kai to the highest trump when the trump is called during it', () => {
+    // Hearts are trumps (concealed). Seat 0 leads the jack of hearts; seat 1,
+    // void, calls and discards; seat 2's 10 of hearts after the call must not
+    // beat the led jack.
+    let s = baseState({
+      hands: [['JH', 'AD', '7H'], ['8D', 'QC', 'KC'], ['10H', 'KS', '7D'], ['QD', 'KD', '8S']],
+      dealerSeat: 3,
+      bidderSeat: 2,
+      trumpCard: '10H',
+    });
+    s = play(s, 0, 'JH');
+    s = requestTrumpReveal(s, 1);
+    s = play(s, 1, 'QC');
+    s = play(s, 2, '10H');
+    s = play(s, 3, '8S');
+    assert.equal(s.completedTricks[0].winnerSeat, 0);
+    assert.ok(s.log.some((l) => /wins the kai .* with the trump JH/.test(l)));
   });
 
   it('gives the lead to the kai winner', () => {
@@ -217,7 +318,8 @@ describe('early end', () => {
   });
 
   it('plays a made bid through all eight kai', () => {
-    let s = baseState({ bid: 14 });
+    // Exposed from the start, so the round cannot be voided for want of a call.
+    let s = baseState({ bid: 14, revealed: true });
     let guard = 0;
     while (s.phase === 'playing' && guard++ < 40) {
       const seat = s.trick.cards.length === 0 ? (s.trick.leadSeat as Seat) : (((s.trick.cards[3 - (4 - s.trick.cards.length)].seat + 1) % 4) as Seat);
@@ -227,6 +329,25 @@ describe('early end', () => {
     assert.ok(s.phase === 'round_end' || s.phase === 'game_end');
     assert.equal(s.completedTricks.length, 8);
     assert.equal(s.completedTricks.reduce((sum, t) => sum + t.points, 0), 28);
+  });
+});
+
+describe('a round with no call for the trump', () => {
+  it('is void after seven kai and dealt again by the same dealer', () => {
+    let s = baseState({ bid: 14 });
+    const before = { round: s.roundNumber, base: s.baseCards, history: s.history.length };
+    let guard = 0;
+    while (s.phase === 'playing' && guard++ < 40) {
+      const seat = s.trick.cards.length === 0 ? (s.trick.leadSeat as Seat) : (((s.trick.cards[s.trick.cards.length - 1].seat + 1) % 4) as Seat);
+      s = playCard(s, seat, getLegalCards(s, seat)[0]);
+    }
+    assert.equal(s.trump.revealed, false);
+    assert.equal(s.phase, 'bidding');
+    assert.equal(s.dealerSeat, 3);
+    assert.equal(s.roundNumber, before.round);
+    assert.deepEqual(s.baseCards, before.base);
+    assert.equal(s.history.length, before.history);
+    assert.ok(s.log.some((l) => /round is void/.test(l)));
   });
 });
 
@@ -243,7 +364,9 @@ describe('player views', () => {
 
   it('only lists legal cards for the seat whose turn it is', () => {
     const s = baseState();
-    assert.equal(getPlayerView(s, 0).legalCards.length, 7);
+    // Seat 0 holds 8 cards: the 7 of hearts is set aside and, as the bidder,
+    // they may not lead the 8 of hearts either while the trump is concealed.
+    assert.equal(getPlayerView(s, 0).legalCards.length, 6);
     assert.equal(getPlayerView(s, 1).legalCards.length, 0);
   });
 });

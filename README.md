@@ -70,7 +70,7 @@ The web app is built from `main` by GitHub Pages; the Socket.IO server is hosted
 does not understand (for example a trump chosen as a card rather than a suit) and the game then
 plays by the wrong rules. Every client checks the server's protocol version on joining a room and
 shows a red banner if they differ. To check what the server is running open `/health` on it
-(`{"ok":true,"protocol":4,"commit":"abc1234"}`); to update it, trigger **Manual Deploy → Deploy
+(`{"ok":true,"protocol":5,"commit":"abc1234"}`); to update it, trigger **Manual Deploy → Deploy
 latest commit** in the Render dashboard if auto-deploy is off.
 
 - **Look and feel** — a felt table on a rosewood rail with a gold inlay, ivory cards with gold

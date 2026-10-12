@@ -46,9 +46,9 @@ export function RulesPanel({ onClose }: RulesPanelProps) {
           <section>
             <h3>Dealing and the first bidding round</h3>
             <p>
-              Each player gets four cards. The player to the dealer's left opens and <strong>must bid at least 14</strong>
-              (if all four of their cards are K, Q, 8 or 7 they may demand a redeal instead). Bidding goes round to the
-              left; each bid must beat the last and there is no cap short of 28. Once you pass you are out for the round.
+              Deal and play go <strong>counter-clockwise</strong>. Each player gets four cards. The player to the
+              dealer's right opens and <strong>must bid at least 14</strong> (if all four of their cards are K, Q, 8 or
+              7 they may demand a redeal instead). Bidding goes round to the right; each bid must beat the last and there is no cap short of 28. Once you pass you are out for the round.
             </p>
             <p>
               To raise over your own partner's bid you must bid <strong>at least 20</strong>.
@@ -69,7 +69,7 @@ export function RulesPanel({ onClose }: RulesPanelProps) {
             <p>
               Four more cards are dealt to everyone (a hand with all four Jacks is shown and the deal is thrown in). Any
               player may now raise the bid to <strong>24 or more</strong>; the standing bidder may let their bid stand.
-              Whoever holds the bid at the end is the declarer; the player to the dealer's left leads the first kai.
+              Whoever holds the bid at the end is the declarer; the player to the dealer's right leads the first kai.
             </p>
           </section>
 
@@ -78,14 +78,19 @@ export function RulesPanel({ onClose }: RulesPanelProps) {
             <p>
               You must follow suit if you can. The set-aside trump card stays out of the declarer's hand and does not
               count for following suit. Until the trump is called, <strong>trumps have no power</strong>: the highest card
-              of the suit led wins the kai. The winner leads the next kai.
+              of the suit led wins the kai. The winner leads the next kai. While the trump is still concealed the
+              declarer may not lead the trump suit, unless they hold no other suit or another player has already led
+              it.
             </p>
             <p>
               A player who cannot follow suit may <strong>call for the trump</strong>. The declarer shows the card, it
               returns to their hand, and from then on the trump suit beats everything. The caller must play a trump to
-              that kai if they hold one; after that, trumping is never compulsory. A trump-suit card played before the
-              call was just a discard and never counts as a trump. If nobody calls, the declarer's last card is the trump
-              itself and it is exposed as it is played.
+              that kai if they hold one; after that, trumping is never compulsory. Once a kai has been trumped, a player
+              who cannot follow suit must either <strong>overtrump</strong> or discard another suit; a lower trump is
+              not allowed unless it is all they hold. A trump-suit card discarded before
+              the call was just a discard and never counts as a trump, but when the trump suit itself was led the
+              highest trump in the kai wins it. If nobody has called for the trump by the end of the seventh kai, the
+              round is <strong>void</strong>: nothing is scored and the same dealer deals again.
             </p>
           </section>
 

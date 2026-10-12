@@ -1,4 +1,5 @@
-import { legalCardsFor, resolveTrick } from './rules.js';
+import { type PlaySituation, VOID_AFTER_KAI, countsAsTrump, legalPlays, resolveTrick, trumpLeadBarred } from './rules.js';
+import { redealRound } from './dealing.js';
 import { finishRound } from './scoring.js';
 import { appendLog, expectedPlaySeat, playerName } from './state.js';
 import { type Card, type GameState, type Seat, TOTAL_POINTS, cardId, teamOf } from './types.js';
@@ -39,17 +40,21 @@ export function playableHand(state: GameState, seat: Seat): Card[] {
   return state.hands[seat];
 }
 
-// The cards a seat may legally play to the current trick: follow suit if
-// possible (the concealed set-aside trump neither plays nor forces a follow),
-// and a player who just called for the trump must trump if able.
+// The cards a seat may legally play to the current kai (see legalPlays).
 function legalPlaysFor(state: GameState, seat: Seat): Card[] {
-  const ledSuit = state.trick.cards[0]?.card.suit ?? null;
-  const base = legalCardsFor(playableHand(state, seat), ledSuit);
-  if (state.mustTrumpSeat === seat && state.trump.revealed && state.trump.suit) {
-    const trumps = base.filter((c) => c.suit === state.trump.suit);
-    if (trumps.length > 0) return trumps;
-  }
-  return base;
+  return legalPlays(situationFor(state, seat));
+}
+
+function situationFor(state: GameState, seat: Seat): PlaySituation {
+  return {
+    hand: playableHand(state, seat),
+    trick: state.trick.cards,
+    completedTricks: state.completedTricks,
+    trumpSuit: state.trump.suit,
+    revealed: state.trump.revealed,
+    isTrumpChooser: state.trump.chosenBySeat === seat,
+    mustTrump: state.mustTrumpSeat === seat,
+  };
 }
 
 export function playCard(state: GameState, seat: Seat, requested: Card): GameState {
@@ -65,10 +70,13 @@ export function playCard(state: GameState, seat: Seat, requested: Card): GameSta
 
   const legal = legalPlaysFor(state, seat);
   if (!legal.some((c) => cardId(c) === cardId(card))) {
+    const situation = situationFor(state, seat);
     throw new Error(
       state.mustTrumpSeat === seat
         ? 'Having called for the trump, you must play a trump'
-        : 'Illegal card: must follow suit if possible'
+        : situation.trick.length === 0 && trumpLeadBarred(situation) && situation.hand.includes(card)
+          ? 'You cannot lead the trump suit until the trump is exposed'
+          : 'Illegal card: must follow suit if possible'
     );
   }
 
@@ -105,19 +113,20 @@ export function playCard(state: GameState, seat: Seat, requested: Card): GameSta
     return { ...state, hands, trick, trump, mustTrumpSeat, log: appendLog(state, ...log) };
   }
 
-  // Trick complete. Trump only has power once it has been revealed, and only
-  // for the cards played after the reveal (resolveTrick checks per card).
+  // Trick complete. Trump only has power once it has been revealed, and a
+  // trump-suit card discarded before the reveal never counts as a trump
+  // (resolveTrick checks per card).
   const activeTrump = trump.revealed ? trump.suit : null;
   const completed = resolveTrick(trick.cards, activeTrump, trick.trickNumber);
   const completedTricks = [...state.completedTricks, completed];
   // Name the winning card whenever a trump decided it - including when the
   // trump suit itself was led, where the "higher card of the kai" is also the
   // higher trump - so an overcut is never a mystery.
-  const winningPlay = trick.cards.find((pc) => pc.seat === completed.winnerSeat);
-  const byTrump = !!winningPlay && activeTrump !== null && winningPlay.card.suit === activeTrump && winningPlay.playedAfterReveal;
+  const winner = trick.cards.find((pc) => pc.seat === completed.winnerSeat);
+  const byTrump = !!winner && countsAsTrump(winner, trick.cards[0].card.suit, activeTrump);
   log.push(
     `${playerName(state.players, completed.winnerSeat)} wins the kai (${completed.points} pts)${
-      byTrump ? ` with the trump ${winningPlay.card.rank}${winningPlay.card.suit}` : ''
+      byTrump ? ` with the trump ${winner.card.rank}${winner.card.suit}` : ''
     }.`
   );
 
@@ -139,6 +148,15 @@ export function playCard(state: GameState, seat: Seat, requested: Card): GameSta
       `Defenders have ${defenderPoints} pts — the bid of ${bid} can no longer be made. The round ends early.`
     );
     return finishRound({ ...state, hands, trick, trump, mustTrumpSeat, completedTricks, log: appendLog(state, ...log) });
+  }
+
+  // If nobody has called for the trump by the end of the seventh kai, the
+  // round stands invalid: nothing is scored and the same dealer deals again.
+  if (completedTricks.length === VOID_AFTER_KAI && !trump.revealed) {
+    return redealRound(
+      { ...state, log: appendLog(state, ...log) },
+      `Nobody called for the trump in the first ${VOID_AFTER_KAI} kai — the round is void and dealt again.`
+    );
   }
 
   const newTrick = { leadSeat: completed.winnerSeat, cards: [], trickNumber: trick.trickNumber + 1 };
