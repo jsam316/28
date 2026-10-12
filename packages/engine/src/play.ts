@@ -1,4 +1,4 @@
-import { legalCardsFor, resolveTrick } from './rules.js';
+import { countsAsTrump, legalCardsFor, resolveTrick } from './rules.js';
 import { finishRound } from './scoring.js';
 import { appendLog, expectedPlaySeat, playerName } from './state.js';
 import { type Card, type GameState, type Seat, TOTAL_POINTS, cardId, teamOf } from './types.js';
@@ -105,19 +105,20 @@ export function playCard(state: GameState, seat: Seat, requested: Card): GameSta
     return { ...state, hands, trick, trump, mustTrumpSeat, log: appendLog(state, ...log) };
   }
 
-  // Trick complete. Trump only has power once it has been revealed, and only
-  // for the cards played after the reveal (resolveTrick checks per card).
+  // Trick complete. Trump only has power once it has been revealed, and a
+  // trump-suit card discarded before the reveal never counts as a trump
+  // (resolveTrick checks per card).
   const activeTrump = trump.revealed ? trump.suit : null;
   const completed = resolveTrick(trick.cards, activeTrump, trick.trickNumber);
   const completedTricks = [...state.completedTricks, completed];
   // Name the winning card whenever a trump decided it - including when the
   // trump suit itself was led, where the "higher card of the kai" is also the
   // higher trump - so an overcut is never a mystery.
-  const winningPlay = trick.cards.find((pc) => pc.seat === completed.winnerSeat);
-  const byTrump = !!winningPlay && activeTrump !== null && winningPlay.card.suit === activeTrump && winningPlay.playedAfterReveal;
+  const winner = trick.cards.find((pc) => pc.seat === completed.winnerSeat);
+  const byTrump = !!winner && countsAsTrump(winner, trick.cards[0].card.suit, activeTrump);
   log.push(
     `${playerName(state.players, completed.winnerSeat)} wins the kai (${completed.points} pts)${
-      byTrump ? ` with the trump ${winningPlay.card.rank}${winningPlay.card.suit}` : ''
+      byTrump ? ` with the trump ${winner.card.rank}${winner.card.suit}` : ''
     }.`
   );
 

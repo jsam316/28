@@ -6,6 +6,7 @@ import {
   TOTAL_POINTS,
   bidTierStake,
   cardPoints,
+  cardStrength,
   chooseTrump,
   createGame,
   decideBotAction,
@@ -122,7 +123,8 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
   }
 
   // Per-card trump status: in every completed kai, an off-suit winner must be
-  // a trump-suit card that was played after the exposure.
+  // a trump-suit card that was played after the exposure, and a trump-led kai
+  // goes to the highest card of the suit led.
   for (const t of s.completedTricks) {
     const ledSuit = t.cards[0].card.suit;
     const winner = t.cards.find((pc) => pc.seat === t.winnerSeat)!;
@@ -131,6 +133,12 @@ function playOneRound(state: GameState, difficulty: BotDifficulty): GameState {
         throw new Error(
           `Kai ${t.trickNumber} won off-suit by ${winner.card.rank}${winner.card.suit} without a post-reveal trump`
         );
+      }
+    }
+    if (ledSuit === s.trump.suit) {
+      const top = t.cards.filter((pc) => pc.card.suit === ledSuit).sort((a, b) => cardStrength(b.card) - cardStrength(a.card))[0];
+      if (top.seat !== t.winnerSeat) {
+        throw new Error(`Trump-led kai ${t.trickNumber} not won by the highest trump ${top.card.rank}${top.card.suit}`);
       }
     }
   }

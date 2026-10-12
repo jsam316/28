@@ -41,21 +41,34 @@ export function bidTierStake(bid: number): 1 | 2 | 4 {
   return 1;
 }
 
-export function resolveTrick(cards: PlayedCard[], trumpSuit: Suit | null, trickNumber: number): CompletedTrick {
-  const ledSuit = cards[0].card.suit;
-  // A trump-suit card only counts as a trump if it was played after the
-  // exposure - e.g. an ace of trumps played before the call is beaten by a
-  // queen of trumps played after it.
-  const trumpPlays = trumpSuit
-    ? cards.filter((pc) => pc.card.suit === trumpSuit && pc.playedAfterReveal)
-    : [];
-  const contenders = trumpPlays.length > 0 ? trumpPlays : cards.filter((pc) => pc.card.suit === ledSuit);
+// Whether a card in the kai counts as a trump. A trump-suit card discarded
+// before the exposure was just a discard and cannot win - e.g. an ace of
+// trumps thrown before the call is beaten by a queen of trumps played after
+// it. But when the trump suit itself was led, every card that followed suit
+// is a trump, whenever it was played, so the highest of them wins.
+export function countsAsTrump(pc: Pick<PlayedCard, 'card' | 'playedAfterReveal'>, ledSuit: Suit, trumpSuit: Suit | null): boolean {
+  if (trumpSuit === null || pc.card.suit !== trumpSuit) return false;
+  return ledSuit === trumpSuit || pc.playedAfterReveal === true;
+}
 
+// The play currently winning a kai (complete or not). `trumpSuit` is the
+// trump only once it has been exposed; before that it has no power.
+export function winningPlay<T extends Pick<PlayedCard, 'card' | 'playedAfterReveal'>>(
+  cards: T[],
+  trumpSuit: Suit | null
+): T {
+  const ledSuit = cards[0].card.suit;
+  const trumpPlays = cards.filter((pc) => countsAsTrump(pc, ledSuit, trumpSuit));
+  const contenders = trumpPlays.length > 0 ? trumpPlays : cards.filter((pc) => pc.card.suit === ledSuit);
   let winner = contenders[0];
   for (const pc of contenders) {
     if (cardStrength(pc.card) > cardStrength(winner.card)) winner = pc;
   }
+  return winner;
+}
 
+export function resolveTrick(cards: PlayedCard[], trumpSuit: Suit | null, trickNumber: number): CompletedTrick {
+  const winner = winningPlay(cards, trumpSuit);
   const points = cards.reduce((sum, pc) => sum + cardPoints(pc.card), 0);
 
   return {

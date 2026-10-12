@@ -1,6 +1,7 @@
 // The heuristic playing policy shared by every bot difficulty and by the
 // expert's Monte Carlo playouts. Pure functions of a PlayerView: no state
 // is kept between decisions.
+import { winningPlay } from './rules.js';
 import { type TableMemory, buildMemory, isBoss, isKnownVoid, seatsAfter, unseenInSuit } from './tracking.js';
 import { type Card, type PlayerView, type Seat, type Suit, cardPoints, cardStrength, teamOf } from './types.js';
 
@@ -79,25 +80,6 @@ export const byCostAsc = (a: Card, b: Card) => cardPoints(a) - cardPoints(b) || 
 // Juiciest first: most points, then strongest.
 export const byValueDesc = (a: Card, b: Card) => cardPoints(b) - cardPoints(a) || cardStrength(b) - cardStrength(a);
 
-
-export function currentBestPlay(
-  cards: { seat: number; card: Card; playedAfterReveal?: boolean }[],
-  ledSuit: Suit,
-  activeTrumpSuit: Suit | null
-): { seat: number; card: Card } {
-  // Only cards played after the exposure count as trumps - a trump-suit card
-  // that hit the table before the call is just a discard.
-  const trumpPlays = activeTrumpSuit
-    ? cards.filter((pc) => pc.card.suit === activeTrumpSuit && pc.playedAfterReveal)
-    : [];
-  const contenders = trumpPlays.length > 0 ? trumpPlays : cards.filter((pc) => pc.card.suit === ledSuit);
-  let winner = contenders[0];
-  for (const pc of contenders) {
-    if (cardStrength(pc.card) > cardStrength(winner.card)) winner = pc;
-  }
-  return winner;
-}
-
 // Everything a play decision needs to know about the kai in progress.
 interface TrickContext {
   view: PlayerView;
@@ -118,7 +100,7 @@ function trickContext(view: PlayerView, profile: DifficultyProfile, memory: Tabl
   const trickCards = view.trick.cards;
   const ledSuit = trickCards[0].card.suit;
   const activeTrump = view.trump.revealed ? view.trump.suit : null;
-  const best = currentBestPlay(trickCards, ledSuit, activeTrump);
+  const best = winningPlay(trickCards, activeTrump);
   const myTeam = teamOf(view.you);
   const after = seatsAfter(view);
   return {
@@ -288,7 +270,7 @@ export function partnerTakingTrick(view: PlayerView): boolean {
   if (trickCards.length === 0) return false;
   const activeTrump = view.trump.revealed ? view.trump.suit : null;
   const ledSuit = trickCards[0].card.suit;
-  const best = currentBestPlay(trickCards, ledSuit, activeTrump);
+  const best = winningPlay(trickCards, activeTrump);
   return teamOf(best.seat as Seat) === teamOf(view.you);
 }
 

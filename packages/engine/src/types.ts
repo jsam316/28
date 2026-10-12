@@ -91,8 +91,9 @@ export interface PlayedCard {
   seat: Seat;
   card: Card;
   // Whether the trump had been exposed by the time this card hit the table.
-  // A trump-suit card played before the exposure does not count as a trump,
-  // even for a trick that ends after the exposure.
+  // A trump-suit card discarded before the exposure does not count as a trump,
+  // even for a trick that ends after the exposure (when the trump suit itself
+  // was led, every card that followed suit does - see countsAsTrump).
   playedAfterReveal?: boolean;
 }
 

@@ -75,8 +75,8 @@ describe('the concealed trump card', () => {
     s = play(s, 0, '7H');
     assert.equal(s.trump.revealed, true);
     assert.ok(s.log.some((l) => /forced to expose/.test(l)));
-    // It was exposed as it was played, so it counts as a trump and wins the kai.
-    assert.equal(s.completedTricks[0].winnerSeat, 0);
+    // Hearts were led, so the kai goes to the highest trump in it: the jack.
+    assert.equal(s.completedTricks[0].winnerSeat, 3);
   });
 });
 
@@ -170,6 +170,25 @@ describe('trick resolution during play', () => {
     s = play(s, 3, 'QD');
     assert.equal(s.completedTricks[0].winnerSeat, 0, 'AD wins: hearts were not yet trumps');
     assert.equal(s.trump.revealed, false);
+  });
+
+  it('gives a trump-led kai to the highest trump when the trump is called during it', () => {
+    // Hearts are trumps (concealed). Seat 0 leads the jack of hearts; seat 1,
+    // void, calls and discards; seat 2's 10 of hearts after the call must not
+    // beat the led jack.
+    let s = baseState({
+      hands: [['JH', 'AD', '7H'], ['8D', 'QC', 'KC'], ['10H', 'KS', '7D'], ['QD', 'KD', '8S']],
+      dealerSeat: 3,
+      bidderSeat: 2,
+      trumpCard: '10H',
+    });
+    s = play(s, 0, 'JH');
+    s = requestTrumpReveal(s, 1);
+    s = play(s, 1, 'QC');
+    s = play(s, 2, '10H');
+    s = play(s, 3, '8S');
+    assert.equal(s.completedTricks[0].winnerSeat, 0);
+    assert.ok(s.log.some((l) => /wins the kai .* with the trump JH/.test(l)));
   });
 
   it('gives the lead to the kai winner', () => {
