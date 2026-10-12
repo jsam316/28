@@ -1,6 +1,7 @@
 import type { Card as CardType } from '@twenty-eight/engine';
-import { SUIT_NAME, SUIT_SYMBOL, isRedSuit } from '../utils/cards';
+import { SUIT_NAME, isRedSuit } from '../utils/cards';
 import { CourtArt } from './CourtArt';
+import { SuitIcon } from './SuitIcon';
 
 // Points each rank is worth in 28, shown as small gold dots under the corner
 // index so newer players can see at a glance which cards matter.
@@ -21,7 +22,7 @@ function Corner({ card, position }: { card: CardType; position: 'top' | 'bottom'
   return (
     <span className={`card-corner ${position}`} aria-hidden="true">
       <span className="card-rank">{card.rank}</span>
-      <span className="card-suit">{SUIT_SYMBOL[card.suit]}</span>
+      <SuitIcon suit={card.suit} className="card-suit" />
       {points > 0 && <span className="card-points">{'•'.repeat(points)}</span>}
     </span>
   );
@@ -50,7 +51,7 @@ export function PlayingCard({ card, faceDown, disabled, selected, size = 'md', o
         </span>
       ) : (
         <span className="card-pip" aria-hidden="true">
-          {SUIT_SYMBOL[card.suit]}
+          <SuitIcon suit={card.suit} />
         </span>
       )}
       <Corner card={card} position="bottom" />
