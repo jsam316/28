@@ -72,11 +72,6 @@ describe('turn and phase guards', () => {
     const s = table();
     assert.throws(() => startNextRound(s), /not over/);
   });
-
-  it('refuses to continue a finished match', () => {
-    const s: GameState = { ...table(), phase: 'game_end', winner: 0 };
-    assert.throws(() => startNextRound(s), /not over/);
-  });
 });
 
 describe('client objects are never echoed', () => {

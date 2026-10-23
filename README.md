@@ -5,7 +5,9 @@ A web app for **28 (Twenty-Eight)**, the card game played across Kerala.
 - 32-card deck (7 through Ace), 4 players in 2 partnerships (opposite seats).
 - Card ranking/points: J (3) > 9 (2) > A (1) > 10 (1) > K, Q, 8, 7 (0). Total points in the deck: 28.
 - Bidding, a concealed trump chosen by the highest bidder, the "call for trump" mechanic when
-  a player is void in the suit led, 8 tricks per round, and match play to a target score.
+  a player is void in the suit led, 8 tricks per round, and base cards passed between the teams.
+  A team stripped of its base cards that loses again is broken: the base cards are shared out
+  again at the starting split and play goes on, with any kunukku clips still on.
 
 ## Play modes
 
@@ -70,7 +72,7 @@ The web app is built from `main` by GitHub Pages; the Socket.IO server is hosted
 does not understand (for example a trump chosen as a card rather than a suit) and the game then
 plays by the wrong rules. Every client checks the server's protocol version on joining a room and
 shows a red banner if they differ. To check what the server is running open `/health` on it
-(`{"ok":true,"protocol":5,"commit":"abc1234"}`); to update it, trigger **Manual Deploy → Deploy
+(`{"ok":true,"protocol":6,"commit":"abc1234"}`); to update it, trigger **Manual Deploy → Deploy
 latest commit** in the Render dashboard if auto-deploy is off.
 
 - **Look and feel** — a felt table on a rosewood rail with a gold inlay, ivory cards with gold
@@ -133,9 +135,10 @@ npm run ci            # everything the CI workflow runs: build, typecheck, lint,
 - `packages/engine/test/*.test.ts` are rule-level unit tests (bidding rounds, the set-aside
   trump, calling for trump, early round end, stakes, base cards, kunukku) built on
   `node:test` and run through `tsx`.
-- `packages/engine/src/selftest.ts` simulates 200 full matches with 4 AI bots end-to-end and
-  checks the rules invariants hold (28 points captured per round, no duplicate cards, base
-  cards conserved, clips only shed by the declaring team, etc.).
+- `packages/engine/src/selftest.ts` simulates 200 matches of 60 rounds with 4 AI bots end-to-end
+  and checks the rules invariants hold (28 points captured per round, no duplicate cards, base
+  cards conserved, a break restores the starting split, clips only shed by the declaring team,
+  etc.).
 
 The `CI` GitHub Actions workflow runs the same checks on every pull request and on pushes to
 non-main branches; `Deploy to GitHub Pages` publishes `main`.

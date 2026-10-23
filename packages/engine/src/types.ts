@@ -29,7 +29,7 @@ export const TOTAL_POINTS = 28;
 // incompatibly. The server reports its value on join; a client whose value
 // differs warns that the server is out of date rather than playing a game
 // that will not follow the rules it shows.
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 
 export function cardId(card: Card): string {
   return `${card.rank}${card.suit}`;
@@ -67,8 +67,7 @@ export type Phase =
   | 'bidding'
   | 'trump_selection'
   | 'playing'
-  | 'round_end'
-  | 'game_end';
+  | 'round_end';
 
 export interface BiddingState {
   turnSeat: Seat;
@@ -123,7 +122,9 @@ export interface RoundResult {
   kunukkuMarked: Seat[]; // seats freshly marked with a kunukku this round (shut out as defenders)
   kunukkuCleared: Seat[]; // seats whose kunukku was cleared this round
   kunukkuDoubled: Seat[]; // seats whose kunukku was doubled this round (failed a clearance attempt)
-  kunukkuBlockedWinner: 0 | 1 | null; // team that reached the target score but is held back by a kunukku mark
+  // Team broken this round: it lost while already stripped of base cards, so
+  // the base cards were shared out again at the starting split.
+  brokenTeam: 0 | 1 | null;
 }
 
 // Kunukku ("earring") is a per-seat shame penalty: 0 = clear, 1 = marked, 2 = doubled.
@@ -142,8 +143,9 @@ export interface GameState {
   trick: TrickState;
   completedTricks: CompletedTrick[];
   // Base cards are the match's physical score tokens: each team starts with
-  // half of totalBaseCards face down, hands one to the winners after every
-  // lost round, and the match is won by collecting all of them.
+  // half of totalBaseCards face down and hands base cards to the winners after
+  // every lost round. A team stripped of them that loses again is broken, and
+  // the base cards are shared out again; play never stops on its own.
   baseCards: [number, number];
   totalBaseCards: number;
   // The seat that just called for the trump to be exposed and must therefore
@@ -152,7 +154,6 @@ export interface GameState {
   roundNumber: number;
   history: RoundResult[];
   log: string[];
-  winner: 0 | 1 | null;
   kunukku: [KunukkuLevel, KunukkuLevel, KunukkuLevel, KunukkuLevel];
 }
 
@@ -179,7 +180,6 @@ export interface PlayerView {
   roundNumber: number;
   history: RoundResult[];
   log: string[];
-  winner: 0 | 1 | null;
   canRequestTrumpReveal: boolean;
   canDemandRedeal: boolean;
   legalCards: Card[];

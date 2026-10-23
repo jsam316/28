@@ -7,7 +7,6 @@ import { Scoreboard } from './Scoreboard';
 import { Ticker } from './Ticker';
 import { TrumpBanner } from './TrumpBanner';
 import { RoundEndOverlay } from './RoundEndOverlay';
-import { GameEndOverlay } from './GameEndOverlay';
 import { BottomPanel } from './BottomPanel';
 import { RulesPanel } from './RulesPanel';
 import { LogPanel } from './LogPanel';
@@ -22,7 +21,6 @@ export interface GameScreenActions {
   callTrump: () => void;
   play: (card: Card) => void;
   nextRound?: () => void;
-  restart?: () => void;
 }
 
 interface GameScreenProps {
@@ -49,7 +47,7 @@ const ROUND_END_REVEAL_DELAY_MS = TRICK_ANIM_TOTAL_MS + 250;
 function useDelayedOverlay(phase: PlayerView['phase']): boolean {
   const [reveal, setReveal] = useState(false);
   useEffect(() => {
-    if (phase === 'round_end' || phase === 'game_end') {
+    if (phase === 'round_end') {
       const timer = setTimeout(() => setReveal(true), ROUND_END_REVEAL_DELAY_MS);
       return () => clearTimeout(timer);
     }
@@ -93,7 +91,7 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
   }, [notice]);
 
   const revealOverlay = useDelayedOverlay(view.phase);
-  const showTable = view.phase === 'playing' || ((view.phase === 'round_end' || view.phase === 'game_end') && !revealOverlay);
+  const showTable = view.phase === 'playing' || (view.phase === 'round_end' && !revealOverlay);
 
   const revealedAsideCard = useRevealedAside(view);
   const trumpHolder = view.trump.chosenBySeat;
@@ -212,17 +210,6 @@ export function GameScreen({ view, actions, waitingForHostMessage, onExit, exitL
           players={players}
           onContinue={actions.nextRound}
           waitingMessage={actions.nextRound ? undefined : waitingForHostMessage}
-        />
-      )}
-
-      {revealOverlay && view.phase === 'game_end' && view.winner !== null && (
-        <GameEndOverlay
-          winner={view.winner}
-          baseCards={view.baseCards}
-          totalBaseCards={view.totalBaseCards}
-          lastResult={lastResult}
-          players={players}
-          onRestart={actions.restart}
         />
       )}
 

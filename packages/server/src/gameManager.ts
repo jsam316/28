@@ -126,7 +126,7 @@ export function handleDisconnect(io: Server, room: Room, socketId: string, opts:
   slot.connected = false;
   slot.socketId = null;
 
-  if (room.state && room.state.phase !== 'game_end') {
+  if (room.state) {
     // Hold the seat for a while; if they do not come back a bot takes over so
     // play can continue for everyone else.
     if (slot.takeoverTimer) clearTimeout(slot.takeoverTimer);

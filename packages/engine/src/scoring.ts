@@ -108,22 +108,17 @@ export function finishRound(state: GameState): GameState {
     );
   }
 
-  // Match end: reaching 12-0 alone doesn't finish it. The stripped team gets
-  // a last stand - if they lose yet another round while already at zero,
-  // they are broken and the match is over.
-  let winner: 0 | 1 | null = loserEnteredAtZero ? roundWinnerTeam : null;
-  let kunukkuBlockedWinner: 0 | 1 | null = null;
-  if (winner !== null) {
-    const winningSeats = ([0, 1, 2, 3] as Seat[]).filter((s) => teamOf(s) === winner);
-    if (winningSeats.some((s) => kunukku[s] > 0)) {
-      kunukkuBlockedWinner = winner;
-      log.push(`Team ${teamLabel(winner)} had the match won but must clear their own kunukku first!`);
-      winner = null;
-    } else {
-      log.push(
-        `Team ${teamLabel(roundLoserTeam)} had nothing left to give — Team ${teamLabel(winner)} breaks them and wins the match!`
-      );
-    }
+  // A break: the stripped team lost again while it had nothing left to give.
+  // Play goes on - the base cards are shared out again at the starting split
+  // and every kunukku clip stays where it is.
+  const brokenTeam: 0 | 1 | null = loserEnteredAtZero ? roundLoserTeam : null;
+  if (brokenTeam !== null) {
+    const half = state.totalBaseCards / 2;
+    baseCards[0] = half;
+    baseCards[1] = half;
+    log.push(
+      `Team ${teamLabel(brokenTeam)} had nothing left to give — Team ${teamLabel(roundWinnerTeam)} breaks them! The base cards are shared out again, ${half} each.`
+    );
   }
 
   const result: RoundResult = {
@@ -139,16 +134,15 @@ export function finishRound(state: GameState): GameState {
     kunukkuMarked,
     kunukkuCleared,
     kunukkuDoubled,
-    kunukkuBlockedWinner,
+    brokenTeam,
   };
 
   return {
     ...state,
-    phase: winner !== null ? 'game_end' : 'round_end',
+    phase: 'round_end',
     baseCards,
     history: [...state.history, result],
     log,
-    winner,
     trump: { ...state.trump, revealed: true },
     kunukku,
   };

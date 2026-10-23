@@ -26,7 +26,7 @@ function LocalGame({
   resumeFrom?: GameState;
   onExit: () => void;
 }) {
-  const { view, notice, bid, redeal, pickTrump, callTrump, play, nextRound, restart } = useLocalGame(
+  const { view, notice, bid, redeal, pickTrump, callTrump, play, nextRound } = useLocalGame(
     name,
     baseCardsPerTeam,
     difficulty,
@@ -35,7 +35,7 @@ function LocalGame({
   return (
     <GameScreen
       view={view}
-      actions={{ bid, redeal, pickTrump, callTrump, play, nextRound, restart }}
+      actions={{ bid, redeal, pickTrump, callTrump, play, nextRound }}
       notice={notice ? `${notice.text}\u200b${notice.at}` : null}
       onExit={onExit}
     />

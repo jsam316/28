@@ -326,7 +326,7 @@ describe('early end', () => {
       const legal = getLegalCards(s, seat);
       s = playCard(s, seat, legal[0]);
     }
-    assert.ok(s.phase === 'round_end' || s.phase === 'game_end');
+    assert.equal(s.phase, 'round_end');
     assert.equal(s.completedTricks.length, 8);
     assert.equal(s.completedTricks.reduce((sum, t) => sum + t.points, 0), 28);
   });

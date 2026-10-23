@@ -37,7 +37,6 @@ export function getPlayerView(state: GameState, seat: Seat): PlayerView {
     roundNumber: state.roundNumber,
     history: state.history,
     log: state.log,
-    winner: state.winner,
     canRequestTrumpReveal: canRequestTrumpReveal(state, seat),
     canDemandRedeal: canDemandRedeal(state, seat),
     legalCards: getLegalCards(state, seat),

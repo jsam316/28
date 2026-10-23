@@ -39,7 +39,7 @@ export function useGameSounds(view: PlayerView, roundEndDelayMs: number) {
       timers.push(setTimeout(() => sounds.play('turn'), 180));
     }
 
-    const ended = (view.phase === 'round_end' || view.phase === 'game_end') && last.phase === 'playing';
+    const ended = view.phase === 'round_end' && last.phase === 'playing';
     if (ended) {
       const result = view.history[view.history.length - 1];
       if (result) {

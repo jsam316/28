@@ -18,6 +18,8 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
   const playerName = (seat: number) => players.find((p) => p.seat === seat)?.name ?? `Seat ${seat}`;
 
   const total = result.baseCardsAfter[0] + result.baseCardsAfter[1];
+  // Saves from before breaks existed have no brokenTeam on their results.
+  const broken = result.brokenTeam ?? null;
   return (
     <div className="overlay">
       <div className="overlay-card result-card">
@@ -41,21 +43,23 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
         )}
         {stakeLabel(result.bid) && <p className="result-stakes">Stakes this round: {stakeLabel(result.bid)}</p>}
         <BaseCardTally baseCards={result.baseCardsAfter} totalBaseCards={total} />
-        <p className="result-transfer">
-          {result.cardsTransferred > 0 ? (
-            <>
-              Team {result.roundWinnerTeam === 0 ? 'B' : 'A'} hands over {result.cardsTransferred} base card
-              {result.cardsTransferred > 1 ? 's' : ''}. Base cards: Team A {result.baseCardsAfter[0]}, Team B{' '}
-              {result.baseCardsAfter[1]}.
-            </>
-          ) : (
-            <>No base cards left to hand over.</>
-          )}
-        </p>
+        {broken !== null && (
+          <p className="result-break">
+            Team {broken === 0 ? 'A' : 'B'} had nothing left to give — Team {broken === 0 ? 'B' : 'A'} breaks them! The
+            base cards are shared out again, {total / 2} each, and play goes on. Every kunukku clip stays on.
+          </p>
+        )}
+        {broken === null && (
+          <p className="result-transfer">
+            Team {result.roundWinnerTeam === 0 ? 'B' : 'A'} hands over {result.cardsTransferred} base card
+            {result.cardsTransferred > 1 ? 's' : ''}. Base cards: Team A {result.baseCardsAfter[0]}, Team B{' '}
+            {result.baseCardsAfter[1]}.
+          </p>
+        )}
         {result.cardsTransferred > 0 && result.baseCardsAfter[result.roundWinnerTeam === 0 ? 1 : 0] === 0 && (
           <p className="result-failed">
             Team {result.roundWinnerTeam === 0 ? 'B' : 'A'} is stripped of base cards — kunukku state! They must win a
-            round to survive; losing again means the match.
+            round to survive; losing again breaks them.
           </p>
         )}
         {result.kunukkuMarked.length > 0 && (
@@ -74,12 +78,6 @@ export function RoundEndOverlay({ result, players, onContinue, waitingMessage }:
           <p className="result-failed">
             {result.kunukkuDoubled.map(playerName).join(' & ')} {result.kunukkuDoubled.length > 1 ? 'take' : 'takes'} a
             second kunukku clip!
-          </p>
-        )}
-        {result.kunukkuBlockedWinner !== null && (
-          <p className="result-failed">
-            Team {result.kunukkuBlockedWinner === 0 ? 'A' : 'B'} reached the target score but must clear their kunukku
-            before winning — the match continues!
           </p>
         )}
         {onContinue && (

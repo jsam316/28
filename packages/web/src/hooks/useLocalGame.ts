@@ -49,7 +49,6 @@ const DIFFICULTIES: BotDifficulty[] = ['rookie', 'regular', 'expert'];
 export function loadSavedLocalGame(): SavedLocalGame | null {
   const saved = loadJSON<SavedLocalGame | null>(SAVE_KEY, null);
   if (!saved || typeof saved !== 'object' || saved.version !== 1 || !saved.state) return null;
-  if (saved.state.phase === 'game_end') return null;
   if (typeof saved.humanName !== 'string' || !DIFFICULTIES.includes(saved.difficulty)) return null;
   if (![3, 6, 9].includes(saved.baseCardsPerTeam)) return null;
   try {
@@ -88,13 +87,8 @@ export function useLocalGame(
   );
   const botTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Persist after every change; a finished match is dropped so the home
-  // screen does not offer to resume it.
+  // Persist after every change so the home screen can offer to resume.
   useEffect(() => {
-    if (state.phase === 'game_end') {
-      clearSavedLocalGame();
-      return;
-    }
     const saved: SavedLocalGame = { version: 1, savedAt: Date.now(), humanName, baseCardsPerTeam, difficulty, state };
     saveJSON(SAVE_KEY, saved);
   }, [state, humanName, baseCardsPerTeam, difficulty]);
@@ -163,10 +157,6 @@ export function useLocalGame(
   const play = useCallback((card: Card) => attempt((prev) => playCard(prev, HUMAN_SEAT, card)), [attempt]);
   const nextRound = useCallback(() => setState((prev) => startNextRound(prev)), []);
 
-  const restart = useCallback(() => {
-    setState(createGame(buildPlayers(humanName), { baseCardsPerTeam }));
-  }, [humanName, baseCardsPerTeam]);
-
   return {
     state,
     view,
@@ -178,6 +168,5 @@ export function useLocalGame(
     callTrump,
     play,
     nextRound,
-    restart,
   };
 }
