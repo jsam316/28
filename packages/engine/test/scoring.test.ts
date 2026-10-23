@@ -93,24 +93,37 @@ describe('kunukku', () => {
   });
 });
 
-describe('match end', () => {
-  it('ends when a team already at zero loses again', () => {
+describe('a break', () => {
+  it('shares the base cards out again when a team already at zero loses again', () => {
     const s = settle({ bidderSeat: 0, bid: 14, bidderPoints: 20, baseCards: [12, 0] });
-    assert.equal(s.phase, 'game_end');
-    assert.equal(s.winner, 0);
+    assert.equal(s.phase, 'round_end');
+    assert.deepEqual(s.baseCards, [6, 6]);
+    assert.equal(s.history[0].brokenTeam, 1);
     assert.equal(s.history[0].cardsTransferred, 0);
+    assert.deepEqual(s.history[0].baseCardsAfter, [6, 6]);
+    assert.ok(s.log.some((l) => /breaks them! The base cards are shared out again, 6 each/.test(l)));
+  });
+  it('uses the starting split of the match, whatever it was', () => {
+    const s = settle({ bidderSeat: 1, bid: 14, bidderPoints: 20, baseCards: [0, 6] });
+    assert.deepEqual(s.baseCards, [3, 3]);
+    assert.equal(s.history[0].brokenTeam, 0);
+  });
+  it('keeps every kunukku clip through the break', () => {
+    // A single-card bid frees only the bidder's own clip; the rest stay on.
+    const s = settle({ bidderSeat: 0, bid: 14, bidderPoints: 20, baseCards: [12, 0], kunukku: [1, 1, 1, 1] });
+    assert.deepEqual(s.kunukku, [0, 1, 1, 1]);
+    assert.deepEqual(s.baseCards, [6, 6]);
+    assert.equal(s.history[0].brokenTeam, 1);
   });
   it('lets the stripped team fight back by winning', () => {
     const s = settle({ bidderSeat: 1, bid: 14, bidderPoints: 20, baseCards: [12, 0] });
     assert.equal(s.phase, 'round_end');
     assert.deepEqual(s.baseCards, [11, 1]);
+    assert.equal(s.history[0].brokenTeam, null);
   });
-  it('withholds the win from a team still wearing a clip', () => {
-    // A single-card bid frees only the bidder's own clip; the partner's stays.
-    const s = settle({ bidderSeat: 0, bid: 14, bidderPoints: 20, baseCards: [12, 0], kunukku: [1, 0, 1, 0] });
-    assert.deepEqual(s.kunukku, [0, 0, 1, 0]);
-    assert.equal(s.phase, 'round_end');
-    assert.equal(s.winner, null);
-    assert.equal(s.history[0].kunukkuBlockedWinner, 0);
+  it('is not a break when the last base card is only just lost', () => {
+    const s = settle({ bidderSeat: 0, bid: 14, bidderPoints: 20, baseCards: [11, 1] });
+    assert.deepEqual(s.baseCards, [12, 0]);
+    assert.equal(s.history[0].brokenTeam, null);
   });
 });

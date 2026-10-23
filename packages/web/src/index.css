@@ -952,6 +952,11 @@ h3 {
   font-weight: 700;
 }
 
+.result-break {
+  color: var(--gold-light);
+  font-weight: 700;
+}
+
 .waiting-message {
   color: #cfd8d3;
   font-style: italic;

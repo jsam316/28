@@ -206,7 +206,7 @@ export function createGameServer(config: ServerConfig) {
           const previousSocket = reconnectRoom(room, seat, socket.id);
           if (previousSocket) io.sockets.sockets.get(previousSocket)?.disconnect(true);
         } else {
-          if (room.state && room.state.phase !== 'game_end') return fail('That game has already started.');
+          if (room.state) return fail('That game has already started.');
           const open = findOpenSeat(room);
           if (open === null) return fail('Room is full.');
           seat = open;
@@ -238,7 +238,7 @@ export function createGameServer(config: ServerConfig) {
       if (!room) return;
       try {
         if (data.seat !== 0) throw new Error('Only the host can start the game.');
-        if (room.state && room.state.phase !== 'game_end') throw new Error('The game has already started.');
+        if (room.state) throw new Error('The game has already started.');
         const waiting = unreadyPlayers(room);
         if (waiting.length > 0) {
           throw new Error(`Waiting for ${waiting.map((p) => p.name).join(', ')} to be ready.`);

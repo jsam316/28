@@ -906,29 +906,6 @@ html {
   font-weight: 700;
 }
 
-.match-crest {
-  width: 4.2rem;
-  height: 4.2rem;
-  margin: 0 auto 0.6rem;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  font-family: var(--font-display);
-  font-size: 1.7rem;
-  font-weight: 800;
-  color: #2b2000;
-  background: radial-gradient(circle at 35% 30%, #fbecb6, var(--gold) 60%, #9c7a1c);
-  box-shadow: 0 0 0 3px rgba(242, 216, 134, 0.35), 0 10px 24px rgba(0, 0, 0, 0.45);
-}
-
-.match-winners {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 1.05rem;
-  color: var(--gold-light);
-  margin-top: -0.3rem;
-}
-
 /* ---------- Small and short screens ---------- */
 
 @media (max-width: 640px) {

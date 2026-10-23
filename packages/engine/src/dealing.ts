@@ -85,7 +85,6 @@ function dealRound(
     roundNumber,
     history,
     log: [`Round ${roundNumber}: cards dealt. ${playerName(players, openingBidder)} opens the bidding.`],
-    winner: null,
     kunukku,
   };
 }

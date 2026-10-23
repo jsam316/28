@@ -108,8 +108,9 @@ export function RulesPanel({ onClose }: RulesPanelProps) {
             <p>
               Each side starts with a stack of base cards (3, 6 or 9). The losing side of every round hands base cards to
               the winners: <strong>one card</strong> for a bid under 20, <strong>two</strong> for 20 to 23 and{' '}
-              <strong>four</strong> for 24 or more. A side that has no base cards left gets one last stand: losing again
-              while at zero ends the match, and the other side wins.
+              <strong>four</strong> for 24 or more. A side that has no base cards left gets one last stand: if it loses again
+              while at zero it is <strong>broken</strong>, the base cards are shared out again at the starting split,
+              and play goes on.
             </p>
           </section>
 
@@ -119,7 +120,7 @@ export function RulesPanel({ onClose }: RulesPanelProps) {
               When a side is stripped of its last base card, both partners wear a kunukku clip. A clip is shed only by
               winning the bid as declarer and making it: a made bid frees one clip per base card staked, starting with
               the bidder. A clipped bidder who fails their bid sinks deeper and takes a second clip (or passes it to the
-              partner once both ears are full). A side still wearing a clip cannot win the match until it is cleared.
+              partner once both ears are full). Clips stay on through a break until they are shed.
             </p>
           </section>
 

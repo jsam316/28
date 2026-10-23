@@ -185,7 +185,7 @@ function playOneDeal(state: GameState, difficulty: BotDifficulty): GameState {
   return s;
 }
 
-const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, blockedWins: 0, zeroStrips: 0 };
+const kunukkuStats = { marked: 0, cleared: 0, doubled: 0, breaks: 0, zeroStrips: 0 };
 const revealStats = { calls: 0, forcedTrumps: 0 };
 let redealCount = 0;
 let fourJacksRedeals = 0;
@@ -253,13 +253,19 @@ function assertInvariants(s: GameState, roundsCompletedSoFar: number) {
   }
 }
 
+// Play never stops on its own (a broken team gets the base cards shared out
+// again), so each simulated match is a fixed stretch of rounds - long enough,
+// with 3 base cards a side, for teams to be stripped and broken many times.
+const ROUNDS_PER_GAME = 60;
+
 function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
   const players = makePlayers();
   let state = createGame(players, { baseCardsPerTeam: 3 });
   let rounds = 0;
-  while (state.phase !== 'game_end') {
+  let breaks = 0;
+  while (rounds < ROUNDS_PER_GAME) {
     rounds++;
-    if (rounds > 2000) throw new Error('Game did not converge to a winner (possible base-card/kunukku deadlock)');
+    const preBase = [...state.baseCards] as [number, number];
     const preKunukku = [...state.kunukku] as [number, number, number, number];
     state = playOneRound(state, difficulty);
     assertInvariants(state, rounds);
@@ -305,12 +311,27 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     kunukkuStats.marked += lastResult.kunukkuMarked.length;
     kunukkuStats.cleared += lastResult.kunukkuCleared.length;
     kunukkuStats.doubled += lastResult.kunukkuDoubled.length;
-    if (lastResult.kunukkuBlockedWinner !== null) kunukkuStats.blockedWins++;
+    // A break happens exactly when the losing team entered the round with no
+    // base cards: nothing changes hands and the starting split is restored.
+    const loser = lastResult.roundWinnerTeam === 0 ? 1 : 0;
+    if ((preBase[loser] === 0) !== (lastResult.brokenTeam === loser)) {
+      throw new Error(`Round ${lastResult.roundNumber}: break recorded wrongly (loser had ${preBase[loser]}, broken ${lastResult.brokenTeam})`);
+    }
+    if (lastResult.brokenTeam !== null) {
+      breaks++;
+      kunukkuStats.breaks++;
+      const half = state.totalBaseCards / 2;
+      if (lastResult.cardsTransferred !== 0 || state.baseCards[0] !== half || state.baseCards[1] !== half) {
+        throw new Error(`Break in round ${lastResult.roundNumber} did not restore ${half}-${half}: ${state.baseCards.join('-')}`);
+      }
+      if (state.kunukku.some((k, seat) => k < preKunukku[seat] && !lastResult.kunukkuCleared.includes(seat as Seat))) {
+        throw new Error(`A break removed a kunukku clip in round ${lastResult.roundNumber}`);
+      }
+    }
     const fullStake = bidTierStake(lastResult.bid);
     // The loser hands over the full staked amount, capped only by however many
     // base cards they had before the round.
-    const loserTeam = lastResult.roundWinnerTeam === 0 ? 1 : 0;
-    const loserBefore = lastResult.baseCardsAfter[loserTeam] + lastResult.cardsTransferred;
+    const loserBefore = preBase[loser];
     const expectedTransfer = Math.min(fullStake, loserBefore);
     if (lastResult.cardsTransferred !== expectedTransfer) {
       throw new Error(
@@ -320,22 +341,11 @@ function runFullGame(gameIndex: number, difficulty: BotDifficulty) {
     if (lastResult.baseCardsAfter[0] === 0 || lastResult.baseCardsAfter[1] === 0) {
       kunukkuStats.zeroStrips++;
     }
-    if (state.phase === 'round_end') {
-      state = startNextRound(state);
-    }
-  }
-  if (state.winner === null) throw new Error('game_end with no winner');
-  if (state.baseCards[state.winner] !== state.totalBaseCards) {
-    throw new Error(`Winner declared without holding all base cards: ${state.baseCards[state.winner]}`);
-  }
-  const last = state.history[state.history.length - 1];
-  // A match can only end as the breaking blow against a team that entered
-  // the round already stripped - so nothing changes hands on the final round.
-  if (last.cardsTransferred !== 0) {
-    throw new Error(`Match ended on a round that still transferred ${last.cardsTransferred} cards`);
+    if (state.phase !== 'round_end') throw new Error(`Round ended in phase ${state.phase}`);
+    state = startNextRound(state);
   }
   console.log(
-    `Game ${gameIndex} [${difficulty}]: winner=Team ${state.winner} after ${rounds} rounds, base cards ${state.baseCards[0]}-${state.baseCards[1]}, last round bid=${last.bid} made=${last.made}`
+    `Game ${gameIndex} [${difficulty}]: ${rounds} rounds, ${breaks} break${breaks === 1 ? '' : 's'}, base cards ${state.baseCards[0]}-${state.baseCards[1]}, kunukku ${state.kunukku.join('')}`
   );
 }
 
@@ -347,7 +357,7 @@ for (let i = 1; i <= GAMES; i++) {
 console.log(`\nAll ${GAMES} simulated games completed with valid invariants (mixed bot difficulties).`);
 console.log(
   `Kunukku activity across all games: ${kunukkuStats.marked} first clips, ${kunukkuStats.cleared} seats shed clips, ` +
-    `${kunukkuStats.doubled} second clips, ${kunukkuStats.blockedWins} blocked-win events, ` +
+    `${kunukkuStats.doubled} second clips, ${kunukkuStats.breaks} breaks, ` +
     `${kunukkuStats.zeroStrips} rounds ending with a team stripped to zero.`
 );
 console.log(

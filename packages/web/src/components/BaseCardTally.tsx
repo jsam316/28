@@ -1,5 +1,5 @@
 // A row of base-card chips for each team, so the state of the match reads at
-// a glance on the round and match result screens.
+// a glance on the round result screen.
 interface BaseCardTallyProps {
   baseCards: [number, number];
   totalBaseCards: number;

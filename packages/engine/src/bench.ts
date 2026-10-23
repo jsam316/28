@@ -40,14 +40,22 @@ function makePlayers(): Player[] {
   }));
 }
 
+// Play never stops on its own, so a match is a fixed stretch of rounds.
+const ROUNDS_PER_MATCH = 40;
+
 // Team 0 (seats 0 and 2) plays with difficulty a, team 1 with difficulty b.
-function playMatch(a: BotDifficulty, b: BotDifficulty, seed: number): { winner: 0 | 1; rounds: number; points: [number, number] } {
+// Returns the rounds each team won, the teams each broke, and points taken.
+function playMatch(
+  a: BotDifficulty,
+  b: BotDifficulty,
+  seed: number
+): { roundsWon: [number, number]; breaks: [number, number]; points: [number, number] } {
   const rng = mulberry32(seed);
   let s: GameState = createGame(makePlayers(), { baseCardsPerTeam: 3, rng });
   const points: [number, number] = [0, 0];
-  let rounds = 0;
-  while (s.phase !== 'game_end') {
-    if (++rounds > 500) throw new Error('match did not converge');
+  const roundsWon: [number, number] = [0, 0];
+  const breaks: [number, number] = [0, 0];
+  for (let rounds = 0; rounds < ROUNDS_PER_MATCH; rounds++) {
     let guard = 0;
     while (s.phase === 'bidding' || s.phase === 'trump_selection' || s.phase === 'playing') {
       if (++guard > 400) throw new Error('round stuck');
@@ -62,32 +70,35 @@ function playMatch(a: BotDifficulty, b: BotDifficulty, seed: number): { winner: 
     const r = s.history[s.history.length - 1];
     points[0] += r.pointsCaptured[0];
     points[1] += r.pointsCaptured[1];
-    if (s.phase === 'round_end') s = startNextRound(s, { rng });
+    roundsWon[r.roundWinnerTeam]++;
+    if (r.brokenTeam !== null) breaks[r.roundWinnerTeam]++;
+    s = startNextRound(s, { rng });
   }
-  return { winner: s.winner as 0 | 1, rounds, points };
+  return { roundsWon, breaks, points };
 }
 
 function pairing(a: BotDifficulty, b: BotDifficulty, matches: number) {
-  let winsA = 0;
-  let totalRounds = 0;
+  let roundsA = 0;
+  let breaksA = 0;
+  let breaksB = 0;
   let pointsA = 0;
   let pointsTotal = 0;
   for (let i = 0; i < matches; i++) {
     // Alternate which side sits in seat 0 so neither gets the first deal every time.
     const swap = i % 2 === 1;
     const result = swap ? playMatch(b, a, i + 1) : playMatch(a, b, i + 1);
-    const aWon = swap ? result.winner === 1 : result.winner === 0;
-    if (aWon) winsA++;
-    totalRounds += result.rounds;
-    pointsA += swap ? result.points[1] : result.points[0];
+    const ia = swap ? 1 : 0;
+    roundsA += result.roundsWon[ia];
+    breaksA += result.breaks[ia];
+    breaksB += result.breaks[1 - ia];
+    pointsA += result.points[ia];
     pointsTotal += result.points[0] + result.points[1];
   }
-  const pct = ((100 * winsA) / matches).toFixed(1);
-  const share = ((100 * pointsA) / pointsTotal).toFixed(1);
+  const share = roundsA / (matches * ROUNDS_PER_MATCH);
   console.log(
-    `${a} vs ${b}: ${a} won ${winsA}/${matches} matches (${pct}%), took ${share}% of points, ${(totalRounds / matches).toFixed(1)} rounds per match`
+    `${a} vs ${b}: ${a} won ${(100 * share).toFixed(1)}% of rounds, took ${((100 * pointsA) / pointsTotal).toFixed(1)}% of points, broke ${breaksA} times and was broken ${breaksB} times over ${matches} matches of ${ROUNDS_PER_MATCH} rounds`
   );
-  return winsA / matches;
+  return share;
 }
 
 const matches = Number(process.argv[2] ?? 300);
